@@ -126,6 +126,7 @@ evanai-client run --model claude-3-opus-20240229  # Use different Claude model
 | `status` | Check client status and conversations | `evanai-client status` |
 | `runtime-info` | Display runtime directory structure | `evanai-client runtime-info` |
 | `reset-persistence` | Reset all persistence data | `evanai-client reset-persistence --force` |
+| `debug` | Launch web-based debug interface | `evanai-client debug --port 8069` |
 | `test-weather` | Test the weather tool locally | `evanai-client test-weather "London"` |
 | `test-prompt` | Test prompt processing locally | `evanai-client test-prompt "Hello!"` |
 
@@ -140,6 +141,10 @@ evanai-client run --model claude-3-opus-20240229  # Use different Claude model
 #### `reset-persistence` Command Options
 - `--force`: Skip confirmation prompt
 - `--runtime-dir PATH`: Specify runtime directory to reset
+
+#### `debug` Command Options
+- `--port PORT`: Port to run the debug server on (default: 8069)
+- `--runtime-dir PATH`: Specify runtime directory
 
 ### Real-World Examples
 
@@ -158,6 +163,9 @@ evanai-client test-prompt "What's the weather in Paris and calculate 15% tip on 
 
 # Clean up after testing
 evanai-client reset-persistence --force
+
+# Launch debug interface for local tool testing
+evanai-client debug --port 8069
 ```
 
 ## Creating Custom Tools
@@ -1037,6 +1045,132 @@ python -u evanai_client/main.py run 2>&1 | tee debug.log
    - Regularly clean temp directories
    - Implement state pruning for old conversations
    - Use streaming for large file operations
+
+## Testing Tools with Debug Interface
+
+The EvanAI Client includes a web-based debug interface for testing and developing tools locally without connecting to the WebSocket server. This provides a convenient way to test your tools in isolation.
+
+### Starting the Debug Server
+
+```bash
+# Start with default settings (port 8069)
+evanai-client debug
+
+# Use custom port
+evanai-client debug --port 8080
+
+# Use custom runtime directory
+evanai-client debug --runtime-dir ./test_runtime
+
+# Or run directly with Python
+python -m evanai_client.main debug --port 8069
+```
+
+### Accessing the Debug Interface
+
+Once started, open your browser and navigate to:
+```
+http://localhost:8069
+```
+
+The debug interface provides:
+- **Interactive Chat**: Send prompts to Claude and see responses in real-time
+- **Tool Testing**: Test individual tools with custom parameters
+- **Conversation Management**: Create and switch between conversations
+- **State Inspection**: View global and per-conversation state
+- **Tool List**: See all loaded tools and their descriptions
+- **Response History**: Track all interactions in the current session
+
+### Testing Your Custom Tools
+
+1. **Create your tool** in `evanai_client/tools/`
+2. **Start the debug server**: `evanai-client debug`
+3. **Open browser** to `http://localhost:8069`
+4. **Send test prompts** that trigger your tool:
+   ```
+   Example prompts:
+   - "Get the weather in Paris"
+   - "Calculate 15% tip on $85.50"
+   - "List files in the current directory"
+   ```
+
+### Debug Interface Features
+
+#### Interactive Testing
+- Send prompts directly to Claude without WebSocket connection
+- See tool calls and results in real-time
+- Test multiple tools in a single prompt
+
+#### State Management
+- View current global state for all tools
+- Inspect per-conversation state
+- Reset state without restarting
+
+#### Tool Information
+- List all available tools
+- View tool descriptions and parameters
+- See which tools were called for each prompt
+
+### Example Debug Session
+
+```bash
+# Terminal 1: Start the debug server
+$ evanai-client debug
+Initializing EvanAI Client...
+Loading tools...
+  ✓ Loaded WeatherToolProvider from weather_tool.py
+  ✓ Loaded MathToolProvider from math_tool.py
+  ✓ Loaded FileSystemToolProvider from file_system_tool.py
+Loaded 6 tools total
+Debug server running on http://localhost:8069
+```
+
+```javascript
+// Browser console (http://localhost:8069)
+// Send a test prompt
+{
+  "prompt": "What's the weather in Tokyo and calculate 20% of 150",
+  "conversation_id": "test-001"
+}
+
+// Response
+{
+  "response": "The weather in Tokyo is sunny with 22°C. 20% of 150 is 30.",
+  "tools_used": ["get_weather", "calculate_percentage"],
+  "processing_time": 1.34
+}
+```
+
+### Debug Server Requirements
+
+The debug interface requires additional dependencies:
+
+```bash
+# Install debug dependencies
+pip install flask flask-cors
+
+# Or install all requirements including debug tools
+pip install -r requirements.txt
+```
+
+### Troubleshooting Debug Mode
+
+**Port already in use:**
+```bash
+# Use a different port
+evanai-client debug --port 8080
+```
+
+**Flask not installed:**
+```bash
+# Install required packages
+pip install flask flask-cors
+```
+
+**Tools not loading:**
+- Check tools are in `evanai_client/tools/`
+- Verify tool inherits from `BaseToolSetProvider`
+- Check for syntax errors in tool files
 
 ## Development
 
