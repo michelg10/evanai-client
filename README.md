@@ -466,64 +466,853 @@ class CalculatorToolProvider(BaseToolSetProvider):
         return history[-limit:] if history else [], None
 ```
 
-## Architecture
+## Advanced Tool Development
 
-### Components
+### Working with Files
 
-1. **WebSocket Handler** - Manages connection to EvanAI server
-2. **Claude Agent** - Processes prompts using Anthropic's Claude API with support for multiple tool calls in a single response
-3. **Tool System** - Plugin architecture for extensible functionality with built-in state management
-4. **State Manager** - Persistent state management with pickle
-5. **Conversation Manager** - Handles multiple conversation contexts
+Tools can access the conversation's working directory to read/write files:
 
-### Message Flow
+```python
+def call_tool(self, tool_id, params, per_conversation_state, global_state):
+    # Get the working directory
+    working_dir = per_conversation_state.get('_working_directory')
 
-1. Server sends prompt via WebSocket → `{"recipient": "agent", "type": "new_prompt", ...}`
-2. Client processes with Claude + tools
-3. Client broadcasts response → `{"recipient": "user_device", "type": "agent_response", ...}`
+    if not working_dir:
+        return None, "Working directory not available"
+
+    # Safe file operations
+    file_path = Path(working_dir) / "output.txt"
+    file_path.write_text("Hello from tool!")
+
+    # Access special directories (symlinks)
+    data_dir = Path(working_dir) / "conversation_data"
+    memory_dir = Path(working_dir) / "agent_memory"
+```
+
+### Using WebSocket for Broadcasting
+
+Tools can send messages back to the server:
+
+```python
+class BroadcastToolProvider(BaseToolSetProvider):
+    def __init__(self, websocket_handler=None):
+        super().__init__(websocket_handler)
+        self.ws = websocket_handler
+
+    def call_tool(self, tool_id, params, conv_state, global_state):
+        if self.ws:
+            # Send update to server
+            self.ws.send_response(
+                conversation_id=conv_state.get('conversation_id'),
+                response="Processing complete!"
+            )
+```
+
+### Tool Best Practices
+
+1. **Clear Descriptions**: Write descriptions that help Claude understand when and how to use your tool
+2. **Parameter Validation**: Always validate input parameters before processing
+3. **Error Handling**: Return descriptive error messages for debugging
+4. **State Management**: Use global state for cross-conversation data, per-conversation for isolated data
+5. **Resource Cleanup**: Clean up resources (files, connections) when done
+6. **Caching**: Implement caching for expensive operations using global state
+7. **Logging**: Add logging for debugging (but avoid exposing sensitive data)
+
+### Complex Tool Example: Database Query Tool
+
+```python
+import sqlite3
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Tuple
+from ..tool_system import BaseToolSetProvider, Tool, Parameter, ParameterType
+
+class DatabaseToolProvider(BaseToolSetProvider):
+    """SQL database query tool with connection pooling."""
+
+    def init(self) -> Tuple[List[Tool], Dict[str, Any], Dict[str, Dict[str, Any]]]:
+        tools = [
+            Tool(
+                id="sql_query",
+                name="SQL Query",
+                description="Execute SQL queries on the conversation database",
+                parameters={
+                    "query": Parameter(
+                        name="query",
+                        type=ParameterType.STRING,
+                        description="SQL query to execute",
+                        required=True
+                    ),
+                    "params": Parameter(
+                        name="params",
+                        type=ParameterType.ARRAY,
+                        description="Query parameters for safe execution",
+                        required=False
+                    )
+                }
+            ),
+            Tool(
+                id="create_table",
+                name="Create Table",
+                description="Create a new database table",
+                parameters={
+                    "table_name": Parameter(
+                        name="table_name",
+                        type=ParameterType.STRING,
+                        description="Name of the table",
+                        required=True
+                    ),
+                    "columns": Parameter(
+                        name="columns",
+                        type=ParameterType.OBJECT,
+                        description="Column definitions (name: type)",
+                        required=True
+                    )
+                }
+            )
+        ]
+
+        return tools, {}, {}
+
+    def call_tool(self, tool_id, params, conv_state, global_state):
+        working_dir = conv_state.get('_working_directory')
+        if not working_dir:
+            return None, "No working directory"
+
+        # Database per conversation
+        db_path = Path(working_dir) / "conversation_data" / "database.db"
+        db_path.parent.mkdir(exist_ok=True)
+
+        if tool_id == "sql_query":
+            return self._execute_query(db_path, params)
+        elif tool_id == "create_table":
+            return self._create_table(db_path, params)
+
+        return None, f"Unknown tool: {tool_id}"
+
+    def _execute_query(self, db_path: Path, params: Dict) -> Tuple[Any, Optional[str]]:
+        query = params.get("query")
+        query_params = params.get("params", [])
+
+        try:
+            with sqlite3.connect(str(db_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+
+                # Execute with parameters for safety
+                cursor.execute(query, query_params)
+
+                if query.strip().upper().startswith("SELECT"):
+                    rows = cursor.fetchall()
+                    return [{k: row[k] for k in row.keys()} for row in rows], None
+                else:
+                    conn.commit()
+                    return {"affected_rows": cursor.rowcount}, None
+
+        except Exception as e:
+            return None, f"Database error: {str(e)}"
+
+    def _create_table(self, db_path: Path, params: Dict) -> Tuple[Dict, Optional[str]]:
+        table_name = params.get("table_name")
+        columns = params.get("columns", {})
+
+        # Build CREATE TABLE statement
+        col_defs = [f"{name} {dtype}" for name, dtype in columns.items()]
+        query = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(col_defs)})"
+
+        return self._execute_query(db_path, {"query": query})
+```
+
+## System Architecture
+
+### Core Components Deep Dive
+
+#### 1. WebSocket Handler (`websocket_handler.py`)
+- **Purpose**: Maintains persistent connection to EvanAI server
+- **Features**:
+  - Auto-reconnection with exponential backoff
+  - Message routing based on recipient and type
+  - Thread-safe message handling
+  - SSL support for secure connections
+
+#### 2. Claude Agent (`claude_agent.py`)
+- **Purpose**: Interfaces with Anthropic's Claude API
+- **Features**:
+  - System prompt customization
+  - Multi-turn conversation support
+  - Tool calling with result processing
+  - Token limit management
+  - Support for iterative tool use
+
+#### 3. Tool Manager (`tool_system.py`)
+- **Purpose**: Loads and manages tool providers
+- **Features**:
+  - Dynamic tool loading from plugins
+  - Tool registration and validation
+  - Parameter type checking
+  - State management per tool
+  - Error handling and recovery
+
+#### 4. Conversation Manager (`conversation_manager.py`)
+- **Purpose**: Orchestrates conversations between components
+- **Features**:
+  - Conversation isolation
+  - Message history tracking
+  - Working directory management
+  - Tool state per conversation
+  - Prompt processing pipeline
+
+#### 5. State Manager (`state_manager.py`)
+- **Purpose**: Handles persistence across sessions
+- **Features**:
+  - Pickle-based serialization
+  - Thread-safe operations
+  - Atomic state updates
+  - Crash recovery
+
+#### 6. Runtime Manager (`runtime_manager.py`)
+- **Purpose**: Manages runtime directory structure
+- **Features**:
+  - Working directory creation
+  - Symlink management
+  - Resource cleanup
+  - Directory isolation
+
+### Message Flow Detailed
+
+```mermaid
+sequenceDiagram
+    participant Server as EvanAI Server
+    participant WS as WebSocket Handler
+    participant CM as Conversation Manager
+    participant CA as Claude Agent
+    participant TM as Tool Manager
+    participant Tool as Tool Provider
+
+    Server->>WS: {"type": "new_prompt", "prompt": "...", "conversation_id": "..."}
+    WS->>CM: Handle message
+    CM->>CA: Process prompt with history
+    CA->>CA: Generate response with Claude API
+
+    alt Tool Use Required
+        CA->>TM: Call tool(s)
+        TM->>Tool: Execute tool
+        Tool->>TM: Return result
+        TM->>CA: Tool results
+        CA->>CA: Process tool results
+    end
+
+    CA->>CM: Final response
+    CM->>WS: Send response
+    WS->>Server: Broadcast to user
+```
 
 ## State Management
 
-- State persists between client restarts (default: `evanai_state.pkl`)
-- Use `--reset-state` flag to clear all state
-- State is separated into:
-  - Global state (shared across all conversations)
-  - Per-conversation state (isolated per conversation)
+### State Hierarchy
+
+The client maintains three levels of state:
+
+1. **Global State**: Shared across all conversations and sessions
+   - Tool statistics (API calls, cache, etc.)
+   - Shared resources (connection pools, etc.)
+   - System-wide configuration
+
+2. **Per-Conversation State**: Isolated to each conversation
+   - Conversation history
+   - Tool-specific data for that conversation
+   - Working directory path
+   - Active resources
+
+3. **Per-Tool State**: Managed within each tool provider
+   - Can access both global and conversation state
+   - Tool-specific caches and data
+
+### State Persistence
+
+```python
+# State file structure (tool_states.pkl)
+{
+    'global': {
+        'tool_name': {
+            'api_calls': 42,
+            'cache': {...}
+        }
+    },
+    'conversations': {
+        'conv_123': {
+            'tool_name': {
+                'history': [...],
+                'settings': {...}
+            },
+            '_working_directory': '/path/to/dir',
+            '_conversation_id': 'conv_123'
+        }
+    }
+}
+```
+
+### Accessing State in Tools
+
+```python
+def call_tool(self, tool_id, params, per_conversation_state, global_state):
+    # Read from global state
+    total_calls = global_state.get('api_calls', 0)
+
+    # Write to global state
+    global_state['api_calls'] = total_calls + 1
+
+    # Read from conversation state
+    history = per_conversation_state.get('query_history', [])
+
+    # Write to conversation state
+    per_conversation_state['last_query'] = params.get('query')
+
+    # State is automatically persisted after tool execution
+```
+
+## Runtime Directory Structure
+
+Each conversation gets its own isolated working directory:
+
+```
+evanai_runtime/
+├── tool_states.pkl          # Persisted state
+├── agent_memory/            # Shared agent memory
+│   └── knowledge.json
+├── conversations/
+│   └── conv_abc123/         # Per-conversation directory
+│       ├── conversation_data/  # Symlink to ../../../conversation_data/conv_abc123
+│       ├── agent_memory/        # Symlink to ../../../agent_memory
+│       └── temp/               # Temporary files
+└── conversation_data/       # Actual data storage
+    └── conv_abc123/
+        ├── output.txt
+        ├── database.db
+        └── uploads/
+```
+
+### Directory Components
+
+- **tool_states.pkl**: Serialized state for all tools and conversations
+- **agent_memory/**: Shared knowledge base accessible by all conversations
+- **conversations/**: Working directories for each conversation
+- **conversation_data/**: Persistent storage for conversation-generated files
+- **temp/**: Temporary files cleared on restart
+
+### Working Directory Access
+
+Tools automatically get access to the conversation's working directory:
+
+```python
+# In your tool's call_tool method
+working_dir = per_conversation_state.get('_working_directory')
+# Example: /path/to/evanai_runtime/conversations/conv_abc123
+
+# Access conversation data
+data_path = Path(working_dir) / "conversation_data" / "myfile.txt"
+
+# Access shared memory
+memory_path = Path(working_dir) / "agent_memory" / "shared.json"
+```
+
+## Message Protocol
+
+### Incoming Messages (Server → Client)
+
+```json
+{
+    "recipient": "agent",
+    "type": "new_prompt",
+    "conversation_id": "conv_123",
+    "prompt": "What's the weather?",
+    "metadata": {
+        "user_id": "user_456",
+        "timestamp": "2024-01-20T10:30:00Z"
+    }
+}
+```
+
+### Outgoing Messages (Client → Server)
+
+```json
+{
+    "device": "evanai-client",
+    "format": "agent_response",
+    "recipient": "user_device",
+    "type": "agent_response",
+    "payload": {
+        "conversation_id": "conv_123",
+        "prompt": "The weather is sunny with a temperature of 72°F.",
+        "metadata": {
+            "tools_used": ["get_weather"],
+            "processing_time": 1.23
+        }
+    }
+}
+```
+
+### File Upload Protocol
+
+When uploading files to the server:
+
+```json
+{
+    "file_name": "report.pdf",
+    "file_content": "<base64_encoded_content>",
+    "description": "Monthly sales report",
+    "conversation_id": "conv_123"
+}
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key | Required |
+| `WEBSOCKET_SERVER_URL` | WebSocket server endpoint | `wss://data-transmitter.hemeshchadalavada.workers.dev` |
+| `FILE_UPLOAD_API_URL` | File upload endpoint | `https://file-upload-api.hemeshchadalavada.workers.dev/upload` |
+| `DEFAULT_RUNTIME_DIR` | Runtime directory path | `evanai_runtime` |
+| `DEFAULT_CLAUDE_MODEL` | Claude model to use | `claude-opus-4-1-20250805` |
+| `MAX_TOKENS` | Maximum response tokens | `32000` |
+| `DEBUG` | Enable debug logging | `0` |
+
+### Configuration File
+
+Create a `.env` file in the project root:
+
+```bash
+# Required
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional overrides
+DEFAULT_CLAUDE_MODEL=claude-3-haiku-20240307
+DEFAULT_RUNTIME_DIR=/custom/runtime/path
+DEBUG=1
+```
+
+### Model Selection
+
+Available Claude models:
+- `claude-opus-4-1-20250805` (Default, most capable)
+- `claude-3-opus-20240229` (Previous Opus version)
+- `claude-3-sonnet-20240229` (Balanced performance)
+- `claude-3-haiku-20240307` (Fastest, cost-effective)
 
 ## Troubleshooting
 
-### WebSocket Connection Issues
+### Common Issues and Solutions
+
+#### WebSocket Connection Issues
+
+**Problem**: Client won't connect to server
+```bash
+WebSocket connection error: [SSL: CERTIFICATE_VERIFY_FAILED]
+```
+**Solution**:
 - Check internet connectivity
-- Verify server URL: `wss://data-transmitter.hemeshchadalavada.workers.dev`
-- Check for firewall/proxy issues
+- Verify server URL is correct
+- Check firewall/proxy settings
+- Ensure SSL certificates are up to date: `pip install --upgrade certifi`
 
-### Claude API Issues
-- Verify ANTHROPIC_API_KEY is set correctly
-- Check API key permissions
-- Monitor rate limits
+**Problem**: Frequent disconnections
+```bash
+WebSocket disconnected. Reconnecting in 5 seconds...
+```
+**Solution**:
+- Check network stability
+- Increase reconnect delay in `websocket_handler.py`
+- Monitor server status
 
-### Tool Loading Issues
-- Ensure tools are in `evanai_client/tools/` directory
-- Check tool implementation inherits from `BaseToolSetProvider`
-- Verify tool IDs are unique
+#### Claude API Issues
+
+**Problem**: API key not found
+```bash
+Error: ANTHROPIC_API_KEY not found in environment variables
+```
+**Solution**:
+```bash
+export ANTHROPIC_API_KEY='your-key-here'
+# Or add to .env file
+echo "ANTHROPIC_API_KEY=your-key-here" >> .env
+```
+
+**Problem**: Rate limit exceeded
+```bash
+Error: Rate limit exceeded. Please retry after...
+```
+**Solution**:
+- Implement exponential backoff
+- Use a different API key
+- Switch to a different model (Haiku for testing)
+
+**Problem**: Token limit exceeded
+```bash
+Error: Maximum token limit (32000) exceeded
+```
+**Solution**:
+- Reduce conversation history size
+- Clear conversation: `evanai-client run --reset-state`
+- Adjust MAX_TOKENS in constants.py
+
+#### Tool Loading Issues
+
+**Problem**: Tool not loading
+```bash
+✗ Failed to load my_tool.py: No module named 'requests'
+```
+**Solution**:
+- Install missing dependencies: `pip install requests`
+- Check tool inherits from `BaseToolSetProvider`
+- Verify tool file is in `evanai_client/tools/`
+
+**Problem**: Tool ID conflict
+```bash
+Error: Tool ID 'my_tool' already registered
+```
+**Solution**:
+- Ensure unique tool IDs across all providers
+- Check for duplicate tool files
+- Review loaded tools: `evanai-client status`
+
+#### State Management Issues
+
+**Problem**: Corrupted state file
+```bash
+Error loading state: invalid load key, 'x'.
+```
+**Solution**:
+```bash
+# Reset all state
+evanai-client reset-persistence --force
+
+# Or manually delete state file
+rm evanai_runtime/tool_states.pkl
+```
+
+**Problem**: State not persisting
+**Solution**:
+- Check file permissions on runtime directory
+- Ensure enough disk space
+- Verify state_manager.py is saving after updates
+
+#### Working Directory Issues
+
+**Problem**: Cannot access working directory
+```bash
+Error: Working directory not available for this conversation
+```
+**Solution**:
+- Ensure conversation is properly initialized
+- Check runtime directory permissions
+- Verify symlinks are created correctly
+
+### Debug Mode
+
+Enable detailed logging for troubleshooting:
+
+```bash
+# Set debug environment variable
+export DEBUG=1
+evanai-client run
+
+# Or use Python logging
+python -u evanai_client/main.py run 2>&1 | tee debug.log
+```
+
+### Performance Optimization
+
+1. **Reduce Token Usage**:
+   - Limit conversation history
+   - Use concise system prompts
+   - Clear old conversations regularly
+
+2. **Optimize Tool Calls**:
+   - Implement caching in tools
+   - Batch API requests when possible
+   - Use async operations for I/O
+
+3. **Memory Management**:
+   - Regularly clean temp directories
+   - Implement state pruning for old conversations
+   - Use streaming for large file operations
 
 ## Development
 
+### Setting Up Development Environment
+
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/evanai-client.git
+cd evanai-client
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in development mode
+pip install -e .
+
+# Install development dependencies
+pip install pytest black flake8 mypy
+```
+
 ### Running Tests
+
 ```bash
-# Test weather tool
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_tools.py
+
+# Run with coverage
+pytest --cov=evanai_client --cov-report=html
+
+# Test individual tools
 evanai-client test-weather "London, UK"
-
-# Test prompt processing
-evanai-client test-prompt "What can you help me with?"
+evanai-client test-prompt "Calculate 15% tip on $50"
 ```
 
-### Debug Mode
-Set environment variable for verbose logging:
+### Code Style
+
 ```bash
-export DEBUG=1
-evanai-client run
+# Format code with black
+black evanai_client/
+
+# Check style with flake8
+flake8 evanai_client/
+
+# Type checking with mypy
+mypy evanai_client/
 ```
+
+### Creating a Test Tool
+
+Create `test_tools/test_example.py`:
+
+```python
+import pytest
+from evanai_client.tools.my_tool import MyToolProvider
+
+def test_tool_initialization():
+    provider = MyToolProvider()
+    tools, global_state, conv_state = provider.init()
+
+    assert len(tools) > 0
+    assert isinstance(global_state, dict)
+    assert isinstance(conv_state, dict)
+
+def test_tool_execution():
+    provider = MyToolProvider()
+    tools, global_state, conv_state = provider.init()
+
+    result, error = provider.call_tool(
+        "my_tool",
+        {"param": "value"},
+        conv_state,
+        global_state
+    )
+
+    assert error is None
+    assert result is not None
+```
+
+### Debugging Tools
+
+```python
+# Add debug logging to your tool
+import logging
+
+logger = logging.getLogger(__name__)
+
+class MyToolProvider(BaseToolSetProvider):
+    def call_tool(self, tool_id, params, conv_state, global_state):
+        logger.debug(f"Tool called: {tool_id} with params: {params}")
+
+        try:
+            # Tool logic
+            result = self._process(params)
+            logger.info(f"Tool {tool_id} succeeded")
+            return result, None
+        except Exception as e:
+            logger.error(f"Tool {tool_id} failed: {e}")
+            return None, str(e)
+```
+
+### Contributing Guidelines
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/my-new-tool`
+3. **Write tests** for your changes
+4. **Ensure all tests pass**: `pytest`
+5. **Format your code**: `black .`
+6. **Submit a pull request**
+
+## Best Practices
+
+### Tool Development Best Practices
+
+1. **Single Responsibility**: Each tool should do one thing well
+2. **Clear Naming**: Use descriptive IDs and names
+3. **Comprehensive Docs**: Write clear descriptions for Claude to understand
+4. **Input Validation**: Always validate parameters
+5. **Error Messages**: Provide helpful error messages
+6. **State Hygiene**: Clean up state when appropriate
+7. **Resource Management**: Close connections, clean temp files
+8. **Testing**: Write unit tests for all tools
+
+### Security Best Practices
+
+1. **API Keys**: Never hardcode API keys in tools
+2. **File Access**: Validate and sanitize file paths
+3. **SQL Injection**: Use parameterized queries
+4. **External APIs**: Validate and sanitize API responses
+5. **Permissions**: Run with minimal required permissions
+6. **Secrets**: Use environment variables for sensitive data
+7. **Logging**: Never log sensitive information
+
+### Performance Best Practices
+
+1. **Caching**: Cache expensive operations in global state
+2. **Batch Operations**: Group multiple operations when possible
+3. **Async Operations**: Use async for I/O-bound tasks
+4. **Connection Pooling**: Reuse connections for databases/APIs
+5. **Lazy Loading**: Load resources only when needed
+6. **Memory Management**: Clean up large objects after use
+7. **Timeout Handling**: Set appropriate timeouts for external calls
+
+### Example: Production-Ready Tool
+
+```python
+import asyncio
+import aiohttp
+from typing import Dict, Any, Optional, Tuple
+from functools import lru_cache
+from ..tool_system import BaseToolSetProvider, Tool, Parameter, ParameterType
+
+class ProductionToolProvider(BaseToolSetProvider):
+    """Production-ready tool with all best practices."""
+
+    def __init__(self, websocket_handler=None):
+        super().__init__(websocket_handler)
+        self.session = None
+        self.timeout = aiohttp.ClientTimeout(total=30)
+
+    def init(self):
+        tools = [
+            Tool(
+                id="fetch_data",
+                name="Fetch Data",
+                description="Fetch data from API with caching and retry logic",
+                parameters={
+                    "endpoint": Parameter(
+                        name="endpoint",
+                        type=ParameterType.STRING,
+                        description="API endpoint path",
+                        required=True
+                    )
+                }
+            )
+        ]
+
+        global_state = {
+            "cache": {},
+            "stats": {"hits": 0, "misses": 0}
+        }
+
+        return tools, global_state, {}
+
+    async def _fetch_with_retry(self, url: str, retries: int = 3):
+        """Fetch with exponential backoff retry."""
+        for i in range(retries):
+            try:
+                if not self.session:
+                    self.session = aiohttp.ClientSession(timeout=self.timeout)
+
+                async with self.session.get(url) as response:
+                    response.raise_for_status()
+                    return await response.json()
+
+            except Exception as e:
+                if i == retries - 1:
+                    raise
+                await asyncio.sleep(2 ** i)  # Exponential backoff
+
+    def call_tool(self, tool_id, params, conv_state, global_state):
+        if tool_id == "fetch_data":
+            endpoint = params.get("endpoint")
+
+            # Input validation
+            if not endpoint or not endpoint.startswith("/"):
+                return None, "Invalid endpoint format"
+
+            # Check cache
+            cache_key = f"fetch:{endpoint}"
+            if cache_key in global_state["cache"]:
+                global_state["stats"]["hits"] += 1
+                return global_state["cache"][cache_key], None
+
+            global_state["stats"]["misses"] += 1
+
+            try:
+                # Run async operation
+                url = f"https://api.example.com{endpoint}"
+                result = asyncio.run(self._fetch_with_retry(url))
+
+                # Cache result
+                global_state["cache"][cache_key] = result
+
+                return result, None
+
+            except Exception as e:
+                return None, f"Failed to fetch data: {str(e)}"
+
+            finally:
+                # Cleanup if needed
+                if self.session:
+                    asyncio.run(self.session.close())
+                    self.session = None
+
+        return None, f"Unknown tool: {tool_id}"
+```
+
+## Additional Resources
+
+### API Documentation
+
+- [Anthropic API Docs](https://docs.anthropic.com/)
+- [WebSocket Protocol](https://datatracker.ietf.org/doc/html/rfc6455)
+- [Python asyncio](https://docs.python.org/3/library/asyncio.html)
+
+### Example Tools Repository
+
+Find more example tools and templates at:
+- Weather API integration
+- Database connectors
+- File processors
+- Web scrapers
+- ML model interfaces
+
+### Community
+
+- Report issues: [GitHub Issues](https://github.com/yourusername/evanai-client/issues)
+- Contribute: See [Contributing Guidelines](#contributing-guidelines)
+- Discord: Join our developer community
+
+## Summary
+
+The EvanAI Client provides a robust, extensible platform for building AI-powered agents that can:
+
+- **Connect**: Maintain real-time WebSocket connections to the EvanAI server
+- **Process**: Leverage Claude's intelligence for natural language understanding
+- **Execute**: Perform actions through a flexible tool system
+- **Remember**: Persist state across sessions and conversations
+- **Scale**: Handle multiple conversations simultaneously
+- **Extend**: Easily add new capabilities through the plugin architecture
+
+Whether you're building simple automation tools or complex AI workflows, the EvanAI Client provides the foundation for creating intelligent, context-aware agents that can interact with various systems and APIs while maintaining conversation context and state.
 
 ## License
 
