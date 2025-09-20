@@ -28,8 +28,13 @@ class AgentClient:
         # Initialize runtime manager first
         self.runtime_manager = RuntimeManager(runtime_dir or DEFAULT_RUNTIME_DIR)
 
+        # Reset all persistence if requested
+        if reset_state:
+            print(f"{Fore.YELLOW}Resetting all persistence data...{Style.RESET_ALL}")
+            self.runtime_manager.reset_all()
+
         # Initialize state manager with runtime directory
-        self.state_manager = StateManager(runtime_dir, reset_state)
+        self.state_manager = StateManager(runtime_dir, reset_state=False)  # Don't pass reset_state since we already handled it
         self.tool_manager = ToolManager()
 
         api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -127,7 +132,7 @@ def cli():
 
 
 @cli.command()
-@click.option('--reset-state', is_flag=True, help='Reset all persisted state')
+@click.option('--reset-state', is_flag=True, help='Reset all persistence (conversations, memory, tool states)')
 @click.option('--runtime-dir', default=DEFAULT_RUNTIME_DIR, help='Path to runtime directory')
 @click.option('--api-key', envvar='ANTHROPIC_API_KEY', help='Anthropic API key')
 @click.option('--model', default=DEFAULT_CLAUDE_MODEL, help='Claude model to use')
@@ -179,6 +184,29 @@ def runtime_info():
                     print(f"    {key}: {'✓' if value['exists'] else '✗'} -> {value.get('target', 'N/A')}")
                 else:
                     print(f"    {key}: {value}")
+
+
+@cli.command()
+@click.option('--runtime-dir', default=DEFAULT_RUNTIME_DIR, help='Path to runtime directory')
+@click.option('--force', is_flag=True, help='Skip confirmation prompt')
+def reset_persistence(runtime_dir, force):
+    """Reset all persistence data (conversations, memory, tool states)."""
+    runtime_manager = RuntimeManager(runtime_dir)
+
+    if not force:
+        print(f"{Fore.YELLOW}This will delete all persistence data including:{Style.RESET_ALL}")
+        print("  - All conversations and their history")
+        print("  - Agent memory")
+        print("  - Tool states")
+        print("  - Working directories")
+        response = click.confirm("Are you sure you want to continue?")
+        if not response:
+            print(f"{Fore.CYAN}Reset cancelled.{Style.RESET_ALL}")
+            return
+
+    print(f"{Fore.YELLOW}Resetting all persistence data...{Style.RESET_ALL}")
+    runtime_manager.reset_all()
+    print(f"{Fore.GREEN}✓ All persistence data has been reset{Style.RESET_ALL}")
 
 
 @cli.command()
