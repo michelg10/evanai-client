@@ -74,7 +74,7 @@ class AgentClient:
                     if (inspect.isclass(obj) and
                         issubclass(obj, BaseToolSetProvider) and
                         obj != BaseToolSetProvider):
-                        provider = obj()
+                        provider = obj(websocket_handler=self.websocket_handler)
                         self.tool_manager.register_provider(provider)
                         print(f"{Fore.GREEN}  ✓ Loaded {name} from {tool_file.name}{Style.RESET_ALL}")
 
@@ -226,7 +226,8 @@ def test_prompt(prompt, conversation_id):
         result, error = client.tool_manager.call_tool(
             tool_id,
             parameters,
-            conversation_id
+            conversation_id,
+            working_directory=conversation.working_directory
         )
         return result, error
 

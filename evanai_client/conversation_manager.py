@@ -96,13 +96,14 @@ class ConversationManager:
             # Get available tools
             tools = self.tool_manager.get_anthropic_tools()
 
-            # Create a tool callback that includes the conversation_id
+            # Create a tool callback that includes the conversation_id and working directory
             def tool_callback(tool_id: str, parameters: Dict[str, Any]) -> tuple:
                 print(f"Calling tool: {tool_id} with parameters: {parameters}")
                 result, error = self.tool_manager.call_tool(
                     tool_id,
                     parameters,
-                    conversation_id
+                    conversation_id,
+                    working_directory=conversation.working_directory
                 )
                 if error:
                     print(f"Tool error: {error}")

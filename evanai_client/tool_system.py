@@ -115,6 +115,14 @@ class ToolSetProvider(Protocol):
 class BaseToolSetProvider(ABC):
     """Base class for tool providers."""
 
+    def __init__(self, websocket_handler=None):
+        """Initialize the tool provider.
+
+        Args:
+            websocket_handler: Optional websocket handler for tools that need to communicate
+        """
+        self.websocket_handler = websocket_handler
+
     @abstractmethod
     def init(self) -> Tuple[List[Tool], Dict[str, Any], Dict[str, Dict[str, Any]]]:
         pass
@@ -218,7 +226,8 @@ class ToolManager:
         self,
         tool_id: str,
         parameters: Dict[str, Any],
-        conversation_id: str
+        conversation_id: str,
+        working_directory: Optional[str] = None
     ) -> Tuple[Any, Optional[str]]:
         """Call a tool with the given parameters.
 
@@ -250,6 +259,13 @@ class ToolManager:
         # Initialize conversation state if needed
         if conversation_id not in provider_conversations:
             provider_conversations[conversation_id] = {}
+
+        # Add working directory to conversation state if provided
+        if working_directory:
+            provider_conversations[conversation_id]['_working_directory'] = working_directory
+
+        # Always add conversation_id to the state
+        provider_conversations[conversation_id]['_conversation_id'] = conversation_id
 
         # Call the tool
         result, error = provider.call_tool(
