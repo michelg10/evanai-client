@@ -15,12 +15,12 @@ class FileSystemToolProvider(BaseToolSetProvider):
             Tool(
                 id="list_files",
                 name="List Files",
-                description="List files and directories in a specified directory within the agent's working directory",
+                description="List files and directories in a specified directory",
                 parameters={
                     "directory": Parameter(
                         name="directory",
                         type=ParameterType.STRING,
-                        description="Directory path relative to the agent's working directory (use '.' for current directory)",
+                        description="Directory path (use '.' for current directory)",
                         required=False,
                         default="."
                     )
@@ -87,7 +87,7 @@ class FileSystemToolProvider(BaseToolSetProvider):
                     working_resolved = working_path.resolve()
 
                     if not str(target_resolved).startswith(str(working_resolved)):
-                        return None, f"Error: Cannot access directory outside of working directory"
+                        return None, f"Error: Cannot access directory: {directory}"
 
                     target_path = target_resolved
 

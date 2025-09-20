@@ -7,6 +7,7 @@ from datetime import datetime
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from prompts import get_system_prompt
+from .constants import MAX_TOKENS, DEFAULT_CLAUDE_MODEL
 
 
 class ClaudeAgent:
@@ -16,8 +17,8 @@ class ClaudeAgent:
             raise ValueError("ANTHROPIC_API_KEY not found. Set it as an environment variable or pass it to the constructor.")
 
         self.client = Anthropic(api_key=self.api_key)
-        self.model = "claude-sonnet-4-20250514"
-        self.max_tokens = 32000  # 32k max tokens
+        self.model = DEFAULT_CLAUDE_MODEL
+        self.max_tokens = MAX_TOKENS
         self.system_prompt = self._load_system_prompt()
 
     def _load_system_prompt(self) -> str:

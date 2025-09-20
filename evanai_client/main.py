@@ -10,6 +10,7 @@ from colorama import init, Fore, Style
 import importlib
 import inspect
 
+from .constants import DEFAULT_RUNTIME_DIR, DEFAULT_CLAUDE_MODEL
 from .state_manager import StateManager
 from .tool_system import ToolManager, BaseToolSetProvider
 from .claude_agent import ClaudeAgent
@@ -21,11 +22,11 @@ init(autoreset=True)
 
 
 class AgentClient:
-    def __init__(self, reset_state: bool = False, runtime_dir: str = "evanai_runtime"):
+    def __init__(self, reset_state: bool = False, runtime_dir: str = None):
         print(f"{Fore.CYAN}Initializing EvanAI Client...{Style.RESET_ALL}")
 
         # Initialize runtime manager first
-        self.runtime_manager = RuntimeManager(runtime_dir)
+        self.runtime_manager = RuntimeManager(runtime_dir or DEFAULT_RUNTIME_DIR)
 
         # Initialize state manager with runtime directory
         self.state_manager = StateManager(runtime_dir, reset_state)
@@ -127,9 +128,9 @@ def cli():
 
 @cli.command()
 @click.option('--reset-state', is_flag=True, help='Reset all persisted state')
-@click.option('--runtime-dir', default='evanai_runtime', help='Path to runtime directory')
+@click.option('--runtime-dir', default=DEFAULT_RUNTIME_DIR, help='Path to runtime directory')
 @click.option('--api-key', envvar='ANTHROPIC_API_KEY', help='Anthropic API key')
-@click.option('--model', default='claude-sonnet-4-20250514', help='Claude model to use')
+@click.option('--model', default=DEFAULT_CLAUDE_MODEL, help='Claude model to use')
 def run(reset_state, runtime_dir, api_key, model):
     if api_key:
         os.environ['ANTHROPIC_API_KEY'] = api_key
@@ -149,7 +150,7 @@ def run(reset_state, runtime_dir, api_key, model):
 
 
 @cli.command()
-@click.option('--runtime-dir', default='evanai_runtime', help='Path to runtime directory')
+@click.option('--runtime-dir', default=DEFAULT_RUNTIME_DIR, help='Path to runtime directory')
 def status(runtime_dir):
     load_dotenv()
     client = AgentClient(runtime_dir=runtime_dir)

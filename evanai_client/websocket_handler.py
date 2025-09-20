@@ -8,11 +8,12 @@ import certifi
 import warnings
 from typing import Callable, Optional, Dict, Any
 from datetime import datetime
+from .constants import WEBSOCKET_SERVER_URL
 
 
 class WebSocketHandler:
-    def __init__(self, url: str = "wss://data-transmitter.hemeshchadalavada.workers.dev"):
-        self.url = url
+    def __init__(self, url: str = None):
+        self.url = url or WEBSOCKET_SERVER_URL
         self.ws = None
         self.connected = False
         self.message_handler: Optional[Callable[[Dict[str, Any]], None]] = None

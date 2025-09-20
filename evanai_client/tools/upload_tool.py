@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from ..tool_system import BaseToolSetProvider, Tool, Parameter, ParameterType
+from ..constants import FILE_UPLOAD_API_URL, BROADCAST_API_URL
 
 
 class UploadToolProvider(BaseToolSetProvider):
@@ -13,7 +14,7 @@ class UploadToolProvider(BaseToolSetProvider):
 
     def __init__(self, websocket_handler=None):
         super().__init__(websocket_handler)
-        self.upload_url = "https://file-upload-api.hemeshchadalavada.workers.dev/upload"
+        self.upload_url = FILE_UPLOAD_API_URL
 
     def init(self) -> Tuple[List[Tool], Dict[str, Any], Dict[str, Dict[str, Any]]]:
         """Initialize upload tools."""
@@ -26,7 +27,7 @@ class UploadToolProvider(BaseToolSetProvider):
                     "path": Parameter(
                         name="path",
                         type=ParameterType.STRING,
-                        description="Path to the file relative to conversation_data folder (must be inside conversation_data)",
+                        description="Path to the file in the conversation_data folder (must start with 'conversation_data/')",
                         required=True
                     ),
                     "description": Parameter(
@@ -181,7 +182,7 @@ class UploadToolProvider(BaseToolSetProvider):
 
                     # Send the broadcast
                     try:
-                        broadcast_url = "https://data-transmitter.hemeshchadalavada.workers.dev/broadcast"
+                        broadcast_url = BROADCAST_API_URL
                         broadcast_data = {
                             "device": "evanai-client",
                             "format": "file_upload",

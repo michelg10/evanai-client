@@ -26,7 +26,7 @@ class AssetToolProvider(BaseToolSetProvider):
                     "path": Parameter(
                         name="path",
                         type=ParameterType.STRING,
-                        description="Path relative to the agent's working directory where the lego castle STL should be saved",
+                        description="Path where the lego castle STL should be saved",
                         required=True
                     )
                 }
@@ -85,7 +85,7 @@ class AssetToolProvider(BaseToolSetProvider):
             # Ensure the path is relative
             dest_path = Path(path)
             if dest_path.is_absolute():
-                return None, "Error: Path must be relative to the agent's working directory"
+                return None, "Error: Path must be a relative path"
 
             # Build the full destination path (don't resolve yet)
             full_dest_path = working_path / dest_path
@@ -114,7 +114,7 @@ class AssetToolProvider(BaseToolSetProvider):
                         is_valid = True
 
                 if not is_valid:
-                    return None, "Error: Cannot write files outside of working directory"
+                    return None, f"Error: Cannot write to path: {path}"
 
                 # Now resolve the full path for the actual write
                 full_dest_path = full_dest_path.resolve(strict=False)
