@@ -289,12 +289,12 @@ class DebugServer:
             conversation_id = data.get('conversation_id')
 
             if conversation_id:
-                self.conversation_manager.remove_conversation(conversation_id)
+                self.conversation_manager.clear_conversation(conversation_id)
                 message = f"Reset conversation: {conversation_id}"
             else:
                 # Reset all conversations
                 for conv_id in self.conversation_manager.list_conversations():
-                    self.conversation_manager.remove_conversation(conv_id)
+                    self.conversation_manager.clear_conversation(conv_id)
                 message = "Reset all conversations"
 
             return jsonify({'message': message})
