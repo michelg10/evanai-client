@@ -1,0 +1,17 @@
+README.md
+setup.py
+evanai_client/__init__.py
+evanai_client/claude_agent.py
+evanai_client/conversation_manager.py
+evanai_client/main.py
+evanai_client/state_manager.py
+evanai_client/tool_system.py
+evanai_client/websocket_handler.py
+evanai_client.egg-info/PKG-INFO
+evanai_client.egg-info/SOURCES.txt
+evanai_client.egg-info/dependency_links.txt
+evanai_client.egg-info/entry_points.txt
+evanai_client.egg-info/requires.txt
+evanai_client.egg-info/top_level.txt
+evanai_client/tools/__init__.py
+evanai_client/tools/weather_tool.py
