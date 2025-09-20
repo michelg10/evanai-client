@@ -9,5 +9,5 @@ FILE_UPLOAD_API_URL = "https://file-upload-api.hemeshchadalavada.workers.dev/upl
 
 # Default configurations
 DEFAULT_RUNTIME_DIR = "evanai_runtime"
-DEFAULT_CLAUDE_MODEL = "claude-4-1-opus"
+DEFAULT_CLAUDE_MODEL = "claude-opus-4-1-20250805"
 MAX_TOKENS = 32000
