@@ -5,4 +5,4 @@ venv/
 .DS_Store
 .idea/
 .vscode/
-evanai_state.pkl
+evanai_runtime/

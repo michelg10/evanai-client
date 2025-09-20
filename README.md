@@ -5,11 +5,12 @@ An AI agent client that connects to the EvanAI server, processes prompts using C
 ## Features
 
 - 🔌 WebSocket connection to EvanAI server for real-time communication
-- 🤖 Claude API integration for intelligent responses
+- 🤖 Claude API integration for intelligent responses with Agent Evan personality
 - 🔧 Extensible tool system with plugin architecture
 - 💾 Persistent state management (global and per-conversation)
 - 🎯 Multi-conversation support
-- 🌡️ Example weather tool included
+- 🛠️ Multiple tool calls in a single response
+- 🌡️ Example tools included (weather and math operations)
 
 ## Installation
 
@@ -87,7 +88,7 @@ evanai-client test-prompt "What's the weather in New York?"
 
 ## Creating Custom Tools
 
-Tools are plugins that extend the agent's capabilities. Create a new tool by:
+Tools are plugins that extend the agent's capabilities. The system supports multiple tool calls in a single response. Create a new tool by:
 
 1. Create a Python file in `evanai_client/tools/`
 2. Implement a class that inherits from `BaseToolSetProvider`
@@ -118,7 +119,10 @@ class MyToolProvider(BaseToolSetProvider):
             )
         ]
 
-        global_state = {}
+        # Global state shared across all conversations
+        global_state = {"call_count": 0}
+
+        # Per-conversation state (initially empty)
         per_conversation_state = {}
 
         return tools, global_state, per_conversation_state
@@ -132,6 +136,13 @@ class MyToolProvider(BaseToolSetProvider):
     ) -> Tuple[Any, Optional[str]]:
         if tool_id == "my_tool":
             input_value = tool_parameters.get("input")
+
+            # Update global state
+            global_state["call_count"] += 1
+
+            # Track in conversation state
+            per_conversation_state.setdefault("history", []).append(input_value)
+
             # Tool logic here
             return {"result": f"Processed: {input_value}"}, None
 
@@ -143,8 +154,8 @@ class MyToolProvider(BaseToolSetProvider):
 ### Components
 
 1. **WebSocket Handler** - Manages connection to EvanAI server
-2. **Claude Agent** - Processes prompts using Anthropic's Claude API
-3. **Tool System** - Plugin architecture for extensible functionality
+2. **Claude Agent** - Processes prompts using Anthropic's Claude API with support for multiple tool calls in a single response
+3. **Tool System** - Plugin architecture for extensible functionality with built-in state management
 4. **State Manager** - Persistent state management with pickle
 5. **Conversation Manager** - Handles multiple conversation contexts
 

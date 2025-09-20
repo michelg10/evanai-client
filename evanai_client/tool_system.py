@@ -78,7 +78,17 @@ class Tool:
 
 
 class ToolSetProvider(Protocol):
+    """Protocol defining the interface for tool providers."""
+
     def init(self) -> Tuple[List[Tool], Dict[str, Any], Dict[str, Dict[str, Any]]]:
+        """Initialize the tool provider.
+
+        Returns:
+            Tuple of:
+            - List of tools provided
+            - Initial global state
+            - Initial per-conversation state
+        """
         ...
 
     def call_tool(
@@ -88,10 +98,23 @@ class ToolSetProvider(Protocol):
         per_conversation_state: Dict[str, Any],
         global_state: Dict[str, Any]
     ) -> Tuple[Any, Optional[str]]:
+        """Call a tool with the given parameters.
+
+        Args:
+            tool_id: ID of the tool to call
+            tool_parameters: Parameters for the tool
+            per_conversation_state: Conversation-specific state
+            global_state: Global state shared across conversations
+
+        Returns:
+            Tuple of (result, error) where error is None on success
+        """
         ...
 
 
 class BaseToolSetProvider(ABC):
+    """Base class for tool providers."""
+
     @abstractmethod
     def init(self) -> Tuple[List[Tool], Dict[str, Any], Dict[str, Dict[str, Any]]]:
         pass
@@ -108,8 +131,15 @@ class BaseToolSetProvider(ABC):
 
 
 class ToolValidator:
+    """Validates tool parameters against their schemas."""
+
     @staticmethod
     def validate_parameters(tool: Tool, provided_params: Dict[str, Any]) -> Optional[str]:
+        """Validate provided parameters against tool schema.
+
+        Returns:
+            Error message if validation fails, None otherwise
+        """
         for param_name, param in tool.parameters.items():
             if param.required and param_name not in provided_params:
                 return f"Error: Tool call `{tool.id}` expected parameter `{param_name}`, got `null`"
@@ -127,6 +157,7 @@ class ToolValidator:
 
     @staticmethod
     def _validate_type(value: Any, param: Parameter) -> bool:
+        """Validate that a value matches the parameter type."""
         if param.type == ParameterType.STRING:
             return isinstance(value, str)
         elif param.type == ParameterType.INTEGER:
@@ -155,12 +186,15 @@ class ToolValidator:
 
 
 class ToolManager:
+    """Manages tools and their state across conversations."""
+
     def __init__(self):
         self.tools: Dict[str, Tool] = {}
         self.providers: Dict[str, ToolSetProvider] = {}
         self.provider_states: Dict[str, Dict[str, Any]] = {}
 
     def register_provider(self, provider: ToolSetProvider):
+        """Register a tool provider and its tools."""
         tools, global_state, per_conversation_state = provider.init()
 
         for tool in tools:
@@ -169,6 +203,7 @@ class ToolManager:
             self.tools[tool.id] = tool
             self.providers[tool.id] = provider
 
+        # Store the initial state for this provider
         provider_name = provider.__class__.__name__
         self.provider_states[provider_name] = {
             'global': global_state,
@@ -176,34 +211,47 @@ class ToolManager:
         }
 
     def get_anthropic_tools(self) -> List[Dict]:
+        """Get all tools in Anthropic's expected format."""
         return [tool.to_anthropic_tool() for tool in self.tools.values()]
 
     def call_tool(
         self,
         tool_id: str,
         parameters: Dict[str, Any],
-        conversation_id: str,
-        global_state: Dict[str, Any],
-        conversation_state: Dict[str, Any]
+        conversation_id: str
     ) -> Tuple[Any, Optional[str]]:
+        """Call a tool with the given parameters.
+
+        Args:
+            tool_id: ID of the tool to call
+            parameters: Parameters for the tool
+            conversation_id: ID of the current conversation
+
+        Returns:
+            Tuple of (result, error) where error is None on success
+        """
         if tool_id not in self.tools:
             return None, f"Error: Unknown tool `{tool_id}`"
 
         tool = self.tools[tool_id]
 
+        # Validate parameters
         validation_error = ToolValidator.validate_parameters(tool, parameters)
         if validation_error:
             return None, validation_error
 
         provider = self.providers[tool_id]
-
         provider_name = provider.__class__.__name__
+
+        # Get the provider's state
         provider_global = self.provider_states[provider_name]['global']
         provider_conversations = self.provider_states[provider_name]['conversations']
 
+        # Initialize conversation state if needed
         if conversation_id not in provider_conversations:
             provider_conversations[conversation_id] = {}
 
+        # Call the tool
         result, error = provider.call_tool(
             tool_id,
             parameters,
@@ -215,3 +263,23 @@ class ToolManager:
             return None, error
 
         return result, None
+
+    def get_tool_info(self, tool_id: str) -> Optional[Tool]:
+        """Get information about a specific tool."""
+        return self.tools.get(tool_id)
+
+    def list_tools(self) -> List[str]:
+        """List all registered tool IDs."""
+        return list(self.tools.keys())
+
+    def clear_conversation_state(self, conversation_id: str):
+        """Clear state for a specific conversation across all providers."""
+        for provider_state in self.provider_states.values():
+            if conversation_id in provider_state['conversations']:
+                del provider_state['conversations'][conversation_id]
+
+    def clear_all_state(self):
+        """Clear all state across all providers."""
+        for provider_name, provider_state in self.provider_states.items():
+            provider_state['global'].clear()
+            provider_state['conversations'].clear()

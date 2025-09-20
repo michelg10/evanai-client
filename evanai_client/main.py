@@ -15,15 +15,20 @@ from .tool_system import ToolManager, BaseToolSetProvider
 from .claude_agent import ClaudeAgent
 from .websocket_handler import WebSocketHandler
 from .conversation_manager import ConversationManager
+from .runtime_manager import RuntimeManager
 
 init(autoreset=True)
 
 
 class AgentClient:
-    def __init__(self, reset_state: bool = False, state_file: str = "evanai_state.pkl"):
+    def __init__(self, reset_state: bool = False, runtime_dir: str = "evanai_runtime"):
         print(f"{Fore.CYAN}Initializing EvanAI Client...{Style.RESET_ALL}")
 
-        self.state_manager = StateManager(state_file, reset_state)
+        # Initialize runtime manager first
+        self.runtime_manager = RuntimeManager(runtime_dir)
+
+        # Initialize state manager with runtime directory
+        self.state_manager = StateManager(runtime_dir, reset_state)
         self.tool_manager = ToolManager()
 
         api_key = os.environ.get("ANTHROPIC_API_KEY")
@@ -41,7 +46,8 @@ class AgentClient:
             self.state_manager,
             self.tool_manager,
             self.claude_agent,
-            self.websocket_handler
+            self.websocket_handler,
+            self.runtime_manager
         )
 
         self.load_tools()
@@ -121,14 +127,14 @@ def cli():
 
 @cli.command()
 @click.option('--reset-state', is_flag=True, help='Reset all persisted state')
-@click.option('--state-file', default='evanai_state.pkl', help='Path to state file')
+@click.option('--runtime-dir', default='evanai_runtime', help='Path to runtime directory')
 @click.option('--api-key', envvar='ANTHROPIC_API_KEY', help='Anthropic API key')
 @click.option('--model', default='claude-sonnet-4-20250514', help='Claude model to use')
-def run(reset_state, state_file, api_key, model):
+def run(reset_state, runtime_dir, api_key, model):
     if api_key:
         os.environ['ANTHROPIC_API_KEY'] = api_key
 
-    client = AgentClient(reset_state=reset_state, state_file=state_file)
+    client = AgentClient(reset_state=reset_state, runtime_dir=runtime_dir)
 
     if model:
         client.claude_agent.set_model(model)
@@ -143,11 +149,35 @@ def run(reset_state, state_file, api_key, model):
 
 
 @cli.command()
-@click.option('--state-file', default='evanai_state.pkl', help='Path to state file')
-def status(state_file):
+@click.option('--runtime-dir', default='evanai_runtime', help='Path to runtime directory')
+def status(runtime_dir):
     load_dotenv()
-    client = AgentClient(state_file=state_file)
+    client = AgentClient(runtime_dir=runtime_dir)
     client.status()
+
+
+@cli.command()
+def runtime_info():
+    """Display runtime directory structure and information."""
+    runtime_manager = RuntimeManager()
+
+    print(f"\n{Fore.CYAN}=== EvanAI Runtime Information ==={Style.RESET_ALL}")
+    print(f"Runtime directory: {runtime_manager.runtime_dir}")
+    print(f"Tool states file: {runtime_manager.tool_states_path}")
+    print(f"Agent memory: {runtime_manager.agent_memory_path}")
+
+    conversations = runtime_manager.list_conversations()
+    print(f"\nActive conversations: {len(conversations)}")
+
+    for conv_id in conversations:
+        info = runtime_manager.get_conversation_info(conv_id)
+        print(f"\n  {Fore.YELLOW}{conv_id}:{Style.RESET_ALL}")
+        if info['exists'] and info['paths']:
+            for key, value in info['paths'].items():
+                if isinstance(value, dict) and 'target' in value:
+                    print(f"    {key}: {'✓' if value['exists'] else '✗'} -> {value.get('target', 'N/A')}")
+                else:
+                    print(f"    {key}: {value}")
 
 
 @cli.command()
@@ -190,18 +220,13 @@ def test_prompt(prompt, conversation_id):
 
     conversation = client.conversation_manager.get_or_create_conversation(conversation_id)
 
-    conversation_state = client.state_manager.get_conversation_state(conversation_id)
-    global_state = client.state_manager.get_global_state()
-
     tools = client.tool_manager.get_anthropic_tools()
 
     def tool_callback(tool_id: str, parameters):
         result, error = client.tool_manager.call_tool(
             tool_id,
             parameters,
-            conversation_id,
-            global_state,
-            conversation_state
+            conversation_id
         )
         return result, error
 
