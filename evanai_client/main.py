@@ -137,6 +137,9 @@ def cli():
 @click.option('--api-key', envvar='ANTHROPIC_API_KEY', help='Anthropic API key')
 @click.option('--model', default=DEFAULT_CLAUDE_MODEL, help='Claude model to use')
 def run(reset_state, runtime_dir, api_key, model):
+    # Load environment variables from .env file
+    load_dotenv()
+
     if api_key:
         os.environ['ANTHROPIC_API_KEY'] = api_key
 
