@@ -240,6 +240,27 @@ def test_weather(location):
 
 
 @cli.command()
+@click.option('--port', default=8069, help='Port to run the debug server on')
+@click.option('--runtime-dir', default=DEFAULT_RUNTIME_DIR, help='Path to runtime directory')
+def debug(port, runtime_dir):
+    """Run the debug web interface for testing tools locally."""
+    load_dotenv()
+
+    try:
+        from .debug_server import DebugServer
+        server = DebugServer(runtime_dir=runtime_dir, port=port)
+        server.run(debug=False)  # Run without Flask debug mode to avoid restart issues
+    except ImportError:
+        print(f"{Fore.RED}Error: Debug server dependencies not installed.{Style.RESET_ALL}")
+        print("Please install Flask and flask-cors:")
+        print("  pip install flask flask-cors")
+        sys.exit(1)
+    except Exception as e:
+        print(f"{Fore.RED}Error starting debug server: {e}{Style.RESET_ALL}")
+        sys.exit(1)
+
+
+@cli.command()
 @click.argument('prompt')
 @click.option('--conversation-id', default='test-conversation', help='Conversation ID')
 def test_prompt(prompt, conversation_id):

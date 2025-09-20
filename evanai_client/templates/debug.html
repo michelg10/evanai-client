@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvanAI Debug Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 300px;
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            overflow-y: auto;
+        }
+
+        .sidebar-section h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: #1a1a1a;
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #00ff88;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-connected {
+            background: #00ff8833;
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        /* Messages Section */
+        .messages-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .messages-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            background: #222;
+            border: 1px solid #333;
+        }
+
+        .message.user {
+            background: #003366;
+            border-color: #0066cc;
+            margin-left: 20%;
+        }
+
+        .message.assistant {
+            background: #1a2f1a;
+            border-color: #00ff88;
+            margin-right: 20%;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .message-content {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Input Section */
+        .input-section {
+            padding: 20px;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-field {
+            flex: 1;
+            background: #222;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        .send-button {
+            padding: 12px 24px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .send-button:hover {
+            background: #00cc6a;
+            transform: translateY(-2px);
+        }
+
+        .send-button:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Tool Calls Section */
+        .tool-calls-section {
+            width: 400px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tool-calls-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #333;
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .tool-calls {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .tool-call {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 6px;
+        }
+
+        .tool-call.success {
+            border-color: #00ff88;
+        }
+
+        .tool-call.error {
+            border-color: #ff4444;
+        }
+
+        .tool-call-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .tool-name {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+
+        .tool-status {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .tool-status.success {
+            background: #00ff8833;
+            color: #00ff88;
+        }
+
+        .tool-status.error {
+            background: #ff444433;
+            color: #ff4444;
+        }
+
+        .tool-params, .tool-result {
+            margin-top: 8px;
+            padding: 8px;
+            background: #111;
+            border-radius: 4px;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+
+        /* Tool List */
+        .tool-item {
+            padding: 8px;
+            margin-bottom: 8px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .tool-item-name {
+            color: #ffaa00;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .tool-item-desc {
+            font-size: 11px;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+
+        /* System Info */
+        .system-info {
+            font-size: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .info-label {
+            color: #888;
+        }
+
+        .info-value {
+            color: #00ff88;
+        }
+
+        /* Buttons */
+        .action-button {
+            padding: 8px 16px;
+            background: #333;
+            color: #e0e0e0;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .action-button:hover {
+            background: #444;
+            border-color: #00ff88;
+        }
+
+        .action-button.danger {
+            border-color: #ff4444;
+        }
+
+        .action-button.danger:hover {
+            background: #ff444433;
+            color: #ff4444;
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid #333;
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-section">
+            <h3>🛠️ Available Tools</h3>
+            <div id="tools-list"></div>
+        </div>
+        <div class="sidebar-section">
+            <h3>📊 System Info</h3>
+            <div id="system-info" class="system-info"></div>
+        </div>
+        <div class="sidebar-section">
+            <h3>🎮 Controls</h3>
+            <button class="action-button" onclick="loadTools()">🔄 Refresh Tools</button>
+            <br><br>
+            <button class="action-button danger" onclick="resetConversation()">🗑️ Reset Conversation</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <span>🤖</span>
+                <span>EvanAI Debug Interface</span>
+            </h1>
+            <div class="status-badge status-connected">● READY</div>
+        </div>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <!-- Messages Section -->
+            <div class="messages-section">
+                <div class="messages-header">
+                    <span>💬 Conversation</span>
+                    <span id="message-count">0 messages</span>
+                </div>
+                <div id="messages" class="messages"></div>
+                <div class="input-section">
+                    <textarea id="prompt-input" class="input-field" placeholder="Enter your prompt here..." onkeydown="handleKeyPress(event)"></textarea>
+                    <button id="send-button" class="send-button" onclick="sendPrompt()">Send</button>
+                </div>
+            </div>
+
+            <!-- Tool Calls Section -->
+            <div class="tool-calls-section">
+                <div class="tool-calls-header">⚡ Tool Executions</div>
+                <div id="tool-calls" class="tool-calls">
+                    <div style="padding: 20px; text-align: center; opacity: 0.5;">
+                        No tool calls yet
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let conversationId = 'debug-session-' + Date.now();
+        let messageCount = 0;
+        let isProcessing = false;
+
+        // Initialize
+        window.onload = () => {
+            loadTools();
+            loadSystemInfo();
+            document.getElementById('prompt-input').focus();
+        };
+
+        // Load available tools
+        async function loadTools() {
+            try {
+                const response = await fetch('/api/tools');
+                const data = await response.json();
+
+                const toolsList = document.getElementById('tools-list');
+                toolsList.innerHTML = '';
+
+                data.tools.forEach(tool => {
+                    const toolItem = document.createElement('div');
+                    toolItem.className = 'tool-item';
+                    toolItem.innerHTML = `
+                        <div class="tool-item-name">${tool.name}</div>
+                        <div class="tool-item-desc">${tool.description}</div>
+                    `;
+                    toolsList.appendChild(toolItem);
+                });
+            } catch (error) {
+                console.error('Failed to load tools:', error);
+            }
+        }
+
+        // Load system info
+        async function loadSystemInfo() {
+            try {
+                const response = await fetch('/api/system');
+                const data = await response.json();
+
+                const systemInfo = document.getElementById('system-info');
+                systemInfo.innerHTML = `
+                    <div class="info-item">
+                        <span class="info-label">Model:</span>
+                        <span class="info-value">${data.model}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Max Tokens:</span>
+                        <span class="info-value">${data.max_tokens}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Tools:</span>
+                        <span class="info-value">${data.tool_count}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Runtime:</span>
+                        <span class="info-value">${data.runtime_dir}</span>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Failed to load system info:', error);
+            }
+        }
+
+        // Send prompt
+        async function sendPrompt() {
+            if (isProcessing) return;
+
+            const input = document.getElementById('prompt-input');
+            const prompt = input.value.trim();
+
+            if (!prompt) return;
+
+            isProcessing = true;
+            input.disabled = true;
+            document.getElementById('send-button').disabled = true;
+
+            // Add user message to UI
+            addMessage('user', prompt);
+            input.value = '';
+
+            // Clear tool calls
+            document.getElementById('tool-calls').innerHTML = '<div style="padding: 10px; text-align: center;"><div class="loading"></div></div>';
+
+            try {
+                const response = await fetch('/api/prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        conversation_id: conversationId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    addMessage('assistant', `Error: ${data.error}`);
+                    console.error('Error details:', data.details);
+                } else {
+                    // Add assistant response
+                    addMessage('assistant', data.response);
+
+                    // Display tool calls
+                    displayToolCalls(data.tool_calls);
+                }
+            } catch (error) {
+                addMessage('assistant', `Error: ${error.message}`);
+                console.error('Request failed:', error);
+            } finally {
+                isProcessing = false;
+                input.disabled = false;
+                document.getElementById('send-button').disabled = false;
+                input.focus();
+            }
+        }
+
+        // Add message to UI
+        function addMessage(role, content) {
+            const messages = document.getElementById('messages');
+            const message = document.createElement('div');
+            message.className = `message ${role}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            message.innerHTML = `
+                <div class="message-header">
+                    <span>${role === 'user' ? '👤 User' : '🤖 Assistant'}</span>
+                    <span>${timestamp}</span>
+                </div>
+                <div class="message-content">${escapeHtml(content)}</div>
+            `;
+
+            messages.appendChild(message);
+            messages.scrollTop = messages.scrollHeight;
+
+            messageCount++;
+            document.getElementById('message-count').textContent = `${messageCount} messages`;
+        }
+
+        // Display tool calls
+        function displayToolCalls(toolCalls) {
+            const container = document.getElementById('tool-calls');
+
+            if (!toolCalls || toolCalls.length === 0) {
+                container.innerHTML = '<div style="padding: 20px; text-align: center; opacity: 0.5;">No tool calls</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            toolCalls.forEach(call => {
+                const toolCall = document.createElement('div');
+                toolCall.className = `tool-call ${call.status}`;
+
+                toolCall.innerHTML = `
+                    <div class="tool-call-header">
+                        <span class="tool-name">${call.tool_id}</span>
+                        <span class="tool-status ${call.status}">${call.status} ${call.execution_time || ''}</span>
+                    </div>
+                    <div class="tool-params">
+                        <strong>Parameters:</strong><br>
+                        ${JSON.stringify(call.parameters, null, 2)}
+                    </div>
+                    ${call.result ? `
+                        <div class="tool-result">
+                            <strong>Result:</strong><br>
+                            ${JSON.stringify(call.result, null, 2)}
+                        </div>
+                    ` : ''}
+                    ${call.error ? `
+                        <div class="tool-result" style="color: #ff4444;">
+                            <strong>Error:</strong><br>
+                            ${call.error}
+                        </div>
+                    ` : ''}
+                `;
+
+                container.appendChild(toolCall);
+            });
+        }
+
+        // Handle key press
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendPrompt();
+            }
+        }
+
+        // Reset conversation
+        async function resetConversation() {
+            if (!confirm('Reset the current conversation? This will clear all messages.')) return;
+
+            try {
+                await fetch('/api/reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ conversation_id: conversationId })
+                });
+
+                // Clear UI
+                document.getElementById('messages').innerHTML = '';
+                document.getElementById('tool-calls').innerHTML = '<div style="padding: 20px; text-align: center; opacity: 0.5;">No tool calls yet</div>';
+                messageCount = 0;
+                document.getElementById('message-count').textContent = '0 messages';
+
+                // Generate new conversation ID
+                conversationId = 'debug-session-' + Date.now();
+            } catch (error) {
+                console.error('Failed to reset conversation:', error);
+            }
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
