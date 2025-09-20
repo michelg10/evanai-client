@@ -9,7 +9,7 @@ from ..tool_system import BaseToolSetProvider, Tool, Parameter, ParameterType
 
 
 class ConsoleToolProvider(BaseToolSetProvider):
-    """Console tool provider for executing shell commands in a zsh environment."""
+    """Console tool provider for executing shell commands in a bash environment."""
 
     def __init__(self, websocket_handler=None):
         super().__init__(websocket_handler)
@@ -21,7 +21,7 @@ class ConsoleToolProvider(BaseToolSetProvider):
             Tool(
                 id="execute_command",
                 name="Execute Command",
-                description="Execute a shell command in a zsh shell environment",
+                description="Execute a shell command in a bash shell environment",
                 parameters={
                     "command": Parameter(
                         name="command",
@@ -47,7 +47,7 @@ class ConsoleToolProvider(BaseToolSetProvider):
             Tool(
                 id="start_interactive_session",
                 name="Start Interactive Session",
-                description="Start a persistent interactive zsh shell session",
+                description="Start a persistent interactive bash shell session",
                 parameters={
                     "session_id": Parameter(
                         name="session_id",
@@ -176,8 +176,8 @@ class ConsoleToolProvider(BaseToolSetProvider):
         working_dir = parameters.get("working_directory") or state.get("_working_directory")
 
         try:
-            # Use zsh explicitly
-            shell_command = ["zsh", "-c", command]
+            # Use bash explicitly
+            shell_command = ["bash", "-c", command]
 
             result = subprocess.run(
                 shell_command,
@@ -224,9 +224,9 @@ class ConsoleToolProvider(BaseToolSetProvider):
             return None, f"Maximum number of sessions reached"
 
         try:
-            # Start zsh process
+            # Start bash process
             process = subprocess.Popen(
-                ["zsh", "-i"],  # -i for interactive shell
+                ["bash", "-i"],  # -i for interactive shell
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
