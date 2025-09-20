@@ -1,7 +1,7 @@
 import os
 from typing import Dict, Any, List, Optional, Tuple
 from anthropic import Anthropic
-from anthropic.types import Message, ToolUseBlock, TextBlock
+from anthropic.types import ToolUseBlock, TextBlock
 import json
 from datetime import datetime
 import sys
@@ -101,22 +101,80 @@ class ClaudeAgent:
                 if iteration > 50 and iteration % 10 == 0:
                     print(f"Note: Processing iteration {iteration} of tool calls...")
 
-                # Make API call
-                response = self.client.messages.create(
+                # Make streaming API call and collect response
+                # We use streaming to comply with Anthropic's requirements
+                # but collect the full response internally before processing
+                content_blocks = []
+                current_block = None
+                current_text = ""
+                current_tool_input = ""
+                tool_block = None
+
+                # Stream the response and collect content blocks
+                with self.client.messages.stream(
                     model=self.model,
                     messages=new_history,
                     max_tokens=self.max_tokens,
                     tools=tools if tools else None,
                     system=self.system_prompt if self.system_prompt else None
-                )
+                ) as stream:
+                    # Process streaming events manually to handle both text and tool use
+                    for event in stream:
+                        if not hasattr(event, 'type'):
+                            continue
+
+                        # Handle content block start
+                        if event.type == 'content_block_start':
+                            if hasattr(event, 'content_block'):
+                                if event.content_block.type == 'text':
+                                    current_block = 'text'
+                                    current_text = getattr(event.content_block, 'text', '')
+                                elif event.content_block.type == 'tool_use':
+                                    current_block = 'tool_use'
+                                    tool_block = ToolUseBlock(
+                                        type='tool_use',
+                                        id=event.content_block.id,
+                                        name=event.content_block.name,
+                                        input={}
+                                    )
+                                    current_tool_input = ""
+
+                        # Handle content block delta
+                        elif event.type == 'content_block_delta':
+                            if hasattr(event, 'delta'):
+                                # Text delta
+                                if current_block == 'text' and hasattr(event.delta, 'text'):
+                                    current_text += event.delta.text
+                                # Tool use JSON delta
+                                elif current_block == 'tool_use' and hasattr(event.delta, 'partial_json'):
+                                    current_tool_input += event.delta.partial_json
+
+                        # Handle content block stop
+                        elif event.type == 'content_block_stop':
+                            if current_block == 'text':
+                                content_blocks.append(TextBlock(type='text', text=current_text))
+                            elif current_block == 'tool_use' and tool_block:
+                                # Parse the accumulated JSON
+                                try:
+                                    tool_block.input = json.loads(current_tool_input) if current_tool_input else {}
+                                except json.JSONDecodeError as e:
+                                    print(f"Warning: Failed to parse tool input JSON: {e}")
+                                    tool_block.input = {}
+                                content_blocks.append(tool_block)
+
+                            # Reset for next block
+                            current_block = None
+                            current_text = ""
+                            current_tool_input = ""
+                            tool_block = None
 
                 # Build and append assistant message
-                assistant_message = self._build_assistant_message(response.content)
+                assistant_message = self._build_assistant_message(content_blocks)
                 new_history.append(assistant_message)
 
                 # Process any tool calls and collect text
                 tool_results, text_response = self._process_tool_calls(
-                    response.content,
+                    content_blocks,
                     tool_callback
                 )
 
