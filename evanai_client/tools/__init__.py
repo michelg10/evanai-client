@@ -8,20 +8,16 @@ from .weather_tool import WeatherToolProvider
 from .file_system_tool import FileSystemToolProvider
 from .upload_tool import UploadToolProvider
 from .asset_tool import AssetToolProvider
-# from .console_tool import ConsoleToolProvider  # Commented out
 from .view_photo_tool import ViewPhotoToolProvider
-from .write_tool import WriteToolProvider
-from .bash_tool import BashToolProvider
+from .zsh_tool import ZshToolProvider
 
 __all__ = [
     'WeatherToolProvider',
     'FileSystemToolProvider',
     'UploadToolProvider',
     'AssetToolProvider',
-    # 'ConsoleToolProvider',
     'ViewPhotoToolProvider',
-    'WriteToolProvider',
-    'BashToolProvider'
+    'ZshToolProvider'
 ]
 
 # Tool registry for easy access
@@ -30,10 +26,8 @@ AVAILABLE_TOOLS = {
     'file_system': FileSystemToolProvider,
     'upload': UploadToolProvider,
     'asset': AssetToolProvider,
-    # 'console': ConsoleToolProvider,
     'view_photo': ViewPhotoToolProvider,
-    'write': WriteToolProvider,
-    'bash': BashToolProvider
+    'zsh': ZshToolProvider
 }
 
 

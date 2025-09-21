@@ -1,6 +1,5 @@
 """Debug server for local testing of the EvanAI agent."""
 
-import json
 import time
 import uuid
 from flask import Flask, render_template, request, jsonify, Response

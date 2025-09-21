@@ -4,7 +4,8 @@
       "Bash(python:*)",
       "Bash(source:*)",
       "Bash(mkdir:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(awk:*)"
     ],
     "deny": [],
     "ask": []

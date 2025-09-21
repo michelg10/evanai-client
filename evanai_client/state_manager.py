@@ -1,6 +1,5 @@
 import os
 import pickle
-import json
 from typing import Any, Dict, Optional
 from pathlib import Path
 import threading

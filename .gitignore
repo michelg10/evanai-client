@@ -8,3 +8,6 @@ venv/
 evanai_runtime/
 .venv/
 venv312/
+*.egg-info/
+dist/
+build/
