@@ -24,7 +24,10 @@
       "Read(//tmp/**)",
       "Bash(./build_docker_image.sh:*)",
       "Bash(./scripts/build-agent.sh:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(docker ps:*)",
+      "Bash(xargs -r docker stop)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
