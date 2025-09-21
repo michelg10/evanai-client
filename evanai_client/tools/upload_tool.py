@@ -21,6 +21,7 @@ class UploadToolProvider(BaseToolSetProvider):
             Tool(
                 id="submit_file_to_user",
                 name="Submit File to User",
+                display_name="Submit File to User",
                 description="Submit a file from the conversation_data folder to the user for download",
                 parameters={
                     "path": Parameter(

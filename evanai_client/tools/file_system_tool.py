@@ -15,6 +15,7 @@ class FileSystemToolProvider(BaseToolSetProvider):
             Tool(
                 id="list_files",
                 name="List Files",
+                display_name="List Files",
                 description="List files and directories in a specified directory",
                 parameters={
                     "directory": Parameter(
