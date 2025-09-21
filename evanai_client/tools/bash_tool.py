@@ -112,6 +112,7 @@ class BashToolProvider(BaseToolSetProvider):
             Tool(
                 id="bash",
                 name="Bash Command Execution",
+                display_name="Execute Linux Command",
                 description=(
                     "Execute bash commands in a stateful Linux environment with full network access. "
                     "Each conversation has its own persistent container with a writable /mnt directory. "
@@ -138,12 +139,14 @@ class BashToolProvider(BaseToolSetProvider):
             Tool(
                 id="bash_status",
                 name="Bash Environment Status",
+                display_name="Check Linux Environment Status",
                 description="Get status of the bash environment for this conversation",
                 parameters={}
             ),
             Tool(
                 id="bash_reset",
                 name="Reset Bash Environment",
+                display_name="Reset Linux Environment",
                 description="Reset the bash environment (stops and removes container)",
                 parameters={
                     "keep_data": Parameter(

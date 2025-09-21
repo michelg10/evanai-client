@@ -69,7 +69,12 @@ class Tool:
     name: str
     description: str
     parameters: Dict[str, Parameter]
+    display_name: Optional[str] = None
     returns: Optional[Parameter] = None
+
+    def get_display_name(self) -> str:
+        """Get the human-readable display name, falling back to name if not set."""
+        return self.display_name if self.display_name else self.name
 
     def to_anthropic_tool(self) -> Dict:
         properties = {}

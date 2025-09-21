@@ -34,7 +34,7 @@ from .conversation_manager import ConversationManager
 from .websocket_handler import WebSocketHandler
 from .runtime_manager import RuntimeManager
 from .constants import DEFAULT_RUNTIME_DIR
-from .feature_flags import ENABLE_BASH_TOOL
+from .feature_flags import ENABLE_BASH_TOOL, ENABLE_ZSH_TOOL, ENABLE_HTML_CONVERTER_TOOL, ENABLE_MODEL_TRAINING_TOOL, ENABLE_HTML_RENDERER_TOOL
 
 
 class MockWebSocketHandler:
@@ -140,8 +140,21 @@ class DebugServer:
         import importlib
         import inspect
 
+        # Report disabled tools
+        disabled_tools = []
         if not ENABLE_BASH_TOOL:
-            print(f"{Fore.YELLOW}Bash tool disabled by feature flag{Style.RESET_ALL}")
+            disabled_tools.append("bash")
+        if not ENABLE_ZSH_TOOL:
+            disabled_tools.append("zsh")
+        if not ENABLE_HTML_CONVERTER_TOOL:
+            disabled_tools.append("html_converter")
+        if not ENABLE_MODEL_TRAINING_TOOL:
+            disabled_tools.append("model_training")
+        if not ENABLE_HTML_RENDERER_TOOL:
+            disabled_tools.append("html_renderer")
+
+        if disabled_tools:
+            print(f"{Fore.YELLOW}Disabled tools: {', '.join(disabled_tools)}{Style.RESET_ALL}")
 
         tools_dir = Path(__file__).parent / "tools"
         if not tools_dir.exists():
@@ -151,8 +164,20 @@ class DebugServer:
         tool_files = [f for f in tool_files if f.name != "__init__.py"]
 
         for tool_file in tool_files:
-            # Skip bash_tool.py if feature flag is disabled
+            # Skip tools based on feature flags
             if not ENABLE_BASH_TOOL and tool_file.name == "bash_tool.py":
+                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
+                continue
+            if not ENABLE_ZSH_TOOL and tool_file.name == "zsh_tool.py":
+                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
+                continue
+            if not ENABLE_HTML_CONVERTER_TOOL and tool_file.name == "html_converter_tool.py":
+                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
+                continue
+            if not ENABLE_MODEL_TRAINING_TOOL and tool_file.name == "model_training_tool.py":
+                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
+                continue
+            if not ENABLE_HTML_RENDERER_TOOL and tool_file.name == "html_renderer_tool.py":
                 print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
                 continue
 
@@ -219,9 +244,15 @@ class DebugServer:
 
             # Create tool callback that tracks calls
             def tool_callback(tool_id: str, parameters):
+                # Get the tool's display name
+                display_name = tool_id  # Default to tool_id
+                if tool_id in self.tool_manager.tools:
+                    display_name = self.tool_manager.tools[tool_id].get_display_name()
+
                 # Record the tool call
                 tool_call_info = {
                     'tool_id': tool_id,
+                    'display_name': display_name,
                     'parameters': parameters,
                     'timestamp': datetime.now().isoformat(),
                     'status': 'calling'
@@ -229,6 +260,12 @@ class DebugServer:
 
                 with self.tool_calls_lock:
                     self.tool_calls.append(tool_call_info)
+
+                # Broadcast the tool call
+                try:
+                    self.websocket_handler.broadcast_tool_call(conversation_id, tool_id, display_name, parameters)
+                except Exception as e:
+                    print(f"Failed to broadcast tool call: {e}")
 
                 # Execute the tool
                 start_time = time.time()
