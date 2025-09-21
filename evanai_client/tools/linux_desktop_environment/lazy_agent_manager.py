@@ -114,6 +114,8 @@ class LazyAgent:
 
                 # Container configuration
                 # Mount conversation data and agent memory directories directly
+                # NOTE: Containers created before this fix will still have broken symlinks
+                # They need to be recreated (use container_reset tool) to get proper mounts
                 conv_data_dir = self.manager.runtime_dir / "conversation-data" / self.agent_id
                 agent_memory_dir = self.manager.runtime_dir / "agent-memory"
 

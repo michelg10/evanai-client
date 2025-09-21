@@ -10,6 +10,8 @@ import os
 import sys
 import json
 import time
+import base64
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
@@ -246,9 +248,17 @@ class ContainerZshToolProvider(BaseToolSetProvider):
             )
 
             # Execute command using ZSH
-            # We need to wrap the command for ZSH execution
-            zsh_command = f"zsh -c {json.dumps(command)}"
-            exit_code, stdout, stderr = agent.execute_command(zsh_command, timeout)
+            # Create a temporary script to avoid shell escaping issues with heredocs
+            # This preserves newlines and special characters properly
+
+            # Encode the command to preserve all special characters and newlines
+            encoded_cmd = base64.b64encode(command.encode('utf-8')).decode('ascii')
+
+            # Use a wrapper that decodes and executes via zsh
+            # This avoids JSON escaping issues with heredocs and multiline commands
+            wrapper_cmd = f"echo '{encoded_cmd}' | base64 -d | zsh"
+
+            exit_code, stdout, stderr = agent.execute_command(wrapper_cmd, timeout)
 
             execution_time = time.time() - start_time
 
