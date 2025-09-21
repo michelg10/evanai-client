@@ -235,20 +235,44 @@ class ContainerZshToolProvider(BaseToolSetProvider):
         # Check if this is the first command
         is_first = not conversation_state["container_created"]
         
-        # Get or create agent
-        agent = manager.get_or_create_agent(
-            conversation_id=conversation_id,
-            memory_limit=self.memory_limit,
-            cpu_limit=self.cpu_limit,
-            idle_timeout=self.idle_timeout
-        )
-        
-        # Execute command using ZSH
-        # We need to wrap the command for ZSH execution
-        zsh_command = f"zsh -c {json.dumps(command)}"
-        exit_code, stdout, stderr = agent.execute_command(zsh_command, timeout)
-        
-        execution_time = time.time() - start_time
+        try:
+            # Get or create agent
+            agent = manager.get_or_create_agent(
+                conversation_id=conversation_id,
+                memory_limit=self.memory_limit,
+                cpu_limit=self.cpu_limit,
+                idle_timeout=self.idle_timeout
+            )
+
+            # Execute command using ZSH
+            # We need to wrap the command for ZSH execution
+            zsh_command = f"zsh -c {json.dumps(command)}"
+            exit_code, stdout, stderr = agent.execute_command(zsh_command, timeout)
+
+            execution_time = time.time() - start_time
+
+        except Exception as e:
+            execution_time = time.time() - start_time
+            error_msg = f"Container execution failed: {str(e)}"
+
+            if self.enable_logging:
+                print(f"[ContainerZshTool][{conversation_id}] Error: {error_msg}")
+
+            # Return error result
+            return {
+                "exit_code": -1,
+                "stdout": "",
+                "stderr": error_msg,
+                "success": False,
+                "command": command,
+                "shell": "zsh",
+                "execution_time": execution_time,
+                "conversation_id": conversation_id,
+                "command_number": conversation_state["command_count"] + 1,
+                "container_was_created": False,
+                "output": error_msg,
+                "error": "container_failure"
+            }, None
         
         # Update state
         conversation_state["command_count"] += 1

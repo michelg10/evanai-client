@@ -94,6 +94,7 @@ RUN apt-get update && apt-get install -y \
     libpango1.0-dev \
     libgdk-pixbuf2.0-dev \
     librsvg2-dev \
+    libgraphviz-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -104,7 +105,7 @@ RUN mkdir -p /home/agent/.npm-global && \
 
 # Install Python packages from environment reference
 # Using compatible versions for Python 3.12
-RUN pip3 install --break-system-packages --no-cache-dir \
+RUN pip3 install --break-system-packages --ignore-installed --no-cache-dir \
     # Data Science Core
     numpy \
     pandas \
@@ -216,10 +217,10 @@ RUN pip3 install --break-system-packages --no-cache-dir \
     pyparsing
 
 # Install NPM global packages (using latest compatible versions)
+# Note: markdown-pdf removed due to ARM64 incompatibility with PhantomJS
 RUN npm install -g \
     @mermaid-js/mermaid-cli \
     docx \
-    markdown-pdf \
     markdown-toc \
     markdownlint-cli \
     marked \
@@ -331,6 +332,9 @@ RUN chmod +x /entrypoint.sh
 # Create agent environment script
 RUN cat > /home/agent/.bashrc << 'EOF'
 # Agent Environment Configuration
+
+# Add npm global bin to PATH
+export PATH=/home/agent/.npm-global/bin:$PATH
 
 # Aliases for common operations
 alias ll='ls -la'

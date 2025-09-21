@@ -18,7 +18,12 @@
       "Bash(git fetch:*)",
       "Bash(git reset:*)",
       "Bash(docker images:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(tee:*)",
+      "Bash(docker run:*)",
+      "Read(//tmp/**)",
+      "Bash(./build_docker_image.sh:*)",
+      "Bash(./scripts/build-agent.sh:*)"
     ],
     "deny": [],
     "ask": []

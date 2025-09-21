@@ -126,7 +126,7 @@ class LazyAgent:
                     "network_mode": "host",  # Use host network for full access
                     "mem_limit": self.memory_limit,
                     "nano_cpus": int(self.cpu_limit * 1_000_000_000),
-                    "read_only": True,
+                    "read_only": False,  # Allow writes to mounted volumes
                     "tmpfs": {
                         "/tmp": "rw,noexec,nosuid,size=100m",
                         "/home/agent/.cache": "rw,noexec,nosuid,size=50m"
