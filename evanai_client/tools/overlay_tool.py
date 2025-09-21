@@ -214,6 +214,14 @@ class OverlayToolProvider(BaseToolSetProvider):
         # Need to restart overlay to apply changes
         return self._show_overlay(parameters)
 
+    def get_name(self) -> str:
+        """Get the name of this tool provider."""
+        return "overlay_tools"
+
+    def get_description(self) -> str:
+        """Get the description of this tool provider."""
+        return "Fullscreen overlay display tools for mobile app control"
+
     def __del__(self):
         """Cleanup overlay on provider destruction."""
         if self.overlay_process:
