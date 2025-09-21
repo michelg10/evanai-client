@@ -291,22 +291,24 @@ class ToolManager:
         show_overlay = os.environ.get('EVANAI_SHOW_OVERLAY', 'true').lower() == 'true'
         overlay_timer = None
 
-        print(f"[ToolManager] Overlay check: show_overlay={show_overlay}, OVERLAY_AVAILABLE={OVERLAY_AVAILABLE}, tool_id={tool_id}")
+        current_time = time.time()
+        print(f"[ToolManager] [{current_time:.2f}] Tool '{tool_id}' starting")
+        print(f"[ToolManager] Overlay check: show_overlay={show_overlay}, OVERLAY_AVAILABLE={OVERLAY_AVAILABLE}")
 
         # Check if we're within grace period from last tool
-        time_since_last_tool = time.time() - self.last_tool_end_time
+        time_since_last_tool = current_time - self.last_tool_end_time
         in_grace_period = time_since_last_tool < self.overlay_grace_period
 
         if show_overlay and OVERLAY_AVAILABLE and tool_id not in ['list_files', 'get_weather']:
             if in_grace_period and self.overlay_shown:
-                print(f"[ToolManager] Overlay already showing from previous tool (grace period: {time_since_last_tool:.1f}s)")
+                print(f"[ToolManager] [{current_time:.2f}] Keeping existing overlay (grace period: {time_since_last_tool:.1f}s)")
                 overlay_timer = None  # Don't start a new timer, keep existing overlay
             else:
-                print(f"[ToolManager] Starting overlay timer for tool '{tool_id}' (will trigger in 3 seconds)")
+                print(f"[ToolManager] [{current_time:.2f}] Starting 3-second overlay timer for '{tool_id}'")
                 overlay_timer = threading.Timer(3.0, self._show_overlay)
                 overlay_timer.start()
         else:
-            print(f"[ToolManager] Overlay not started (conditions not met)")
+            print(f"[ToolManager] [{current_time:.2f}] Overlay not started (excluded tool or disabled)")
 
         try:
             # Call the tool
@@ -358,7 +360,8 @@ class ToolManager:
 
     def _show_overlay(self):
         """Show fullscreen overlay with EvanAI working message."""
-        print("[ToolManager] _show_overlay called")
+        current_time = time.time()
+        print(f"[ToolManager] [{current_time:.2f}] _show_overlay called")
         with self.overlay_lock:
             if self.overlay_shown or self.overlay_process:
                 print("[ToolManager] Overlay already shown or process exists, skipping")

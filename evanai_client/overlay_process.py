@@ -42,72 +42,43 @@ def create_overlay():
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
 
-    # Try to load icon.png from various locations
-    icon_paths = [
-        Path('icon.png'),  # Current directory
-        Path(__file__).parent / 'assets' / 'icon.png',  # Assets folder
-        Path(__file__).parent.parent / 'icon.png',  # Parent directory
-    ]
+    # Always show the text design instead of icon
+    # Create a frame for centering content
+    center_frame = tk.Frame(root, bg='#0a0e27')
+    center_frame.pack(expand=True)
 
-    icon_loaded = False
-    for icon_path in icon_paths:
-        if icon_path.exists():
-            try:
-                # Load and resize image
-                img = Image.open(icon_path)
-                # Scale to 1/3 of screen height while maintaining aspect ratio
-                target_height = screen_height // 3
-                aspect_ratio = img.width / img.height
-                target_width = int(target_height * aspect_ratio)
-                img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+    # Main "EvanAI" text with larger, bold font
+    evan_label = tk.Label(
+        center_frame,
+        text="EvanAI",
+        font=('SF Pro Display', 96, 'bold'),
+        fg='#4A90E2',  # Nice blue color
+        bg='#0a0e27'
+    )
+    evan_label.pack()
 
-                photo = ImageTk.PhotoImage(img)
-                label = tk.Label(root, image=photo, bg='#0a0e27')
-                label.image = photo  # Keep reference
-                label.pack(expand=True)
-                icon_loaded = True
-                break
-            except Exception as e:
-                print(f"Error loading icon: {e}", file=sys.stderr)
+    # "is working..." text with animated dots
+    working_label = tk.Label(
+        center_frame,
+        text="is working...",
+        font=('SF Pro Display', 48),
+        fg='#B0C4DE',  # Lighter blue-gray
+        bg='#0a0e27'
+    )
+    working_label.pack(pady=(10, 0))
 
-    # Create main text label with nice typography
-    if not icon_loaded:
-        # Create a frame for centering content
-        center_frame = tk.Frame(root, bg='#0a0e27')
-        center_frame.pack(expand=True)
+    # Animation function for dots
+    dot_count = 0
+    def animate_dots():
+        nonlocal dot_count
+        dot_count = (dot_count % 3) + 1
+        dots = "." * dot_count
+        spaces = " " * (3 - dot_count)  # Keep consistent width
+        working_label.config(text=f"is working{dots}{spaces}")
+        root.after(600, animate_dots)  # Update every 600ms
 
-        # Main "EvanAI" text with larger, bold font
-        evan_label = tk.Label(
-            center_frame,
-            text="EvanAI",
-            font=('SF Pro Display', 96, 'bold'),
-            fg='#4A90E2',  # Nice blue color
-            bg='#0a0e27'
-        )
-        evan_label.pack()
-
-        # "is working..." text with animated dots
-        working_label = tk.Label(
-            center_frame,
-            text="is working...",
-            font=('SF Pro Display', 48),
-            fg='#B0C4DE',  # Lighter blue-gray
-            bg='#0a0e27'
-        )
-        working_label.pack(pady=(10, 0))
-
-        # Animation function for dots
-        dot_count = 0
-        def animate_dots():
-            nonlocal dot_count
-            dot_count = (dot_count % 3) + 1
-            dots = "." * dot_count
-            spaces = " " * (3 - dot_count)  # Keep consistent width
-            working_label.config(text=f"is working{dots}{spaces}")
-            root.after(600, animate_dots)  # Update every 600ms
-
-        # Start the animation
-        animate_dots()
+    # Start the animation
+    animate_dots()
 
     # Add subtitle with better positioning
     subtitle = tk.Label(
