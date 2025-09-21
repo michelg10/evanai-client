@@ -369,7 +369,8 @@ class LazyAgentManager:
                 agent = self.agents[agent_id]
                 if agent.state == AgentState.RUNNING:
                     idle_time = (datetime.now() - agent.last_activity).total_seconds()
-                    if idle_time > agent.idle_timeout:
+                    # Only cleanup if idle_timeout is set (> 0) and exceeded
+                    if agent.idle_timeout > 0 and idle_time > agent.idle_timeout:
                         print(f"[Manager] Cleaning up idle agent: {agent_id}")
                         agent.stop()
 
