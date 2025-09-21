@@ -292,23 +292,16 @@ class ToolManager:
         overlay_timer = None
 
         current_time = time.time()
-        print(f"[ToolManager] [{current_time:.2f}] Tool '{tool_id}' starting")
-        print(f"[ToolManager] Overlay check: show_overlay={show_overlay}, OVERLAY_AVAILABLE={OVERLAY_AVAILABLE}")
-
         # Check if we're within grace period from last tool
         time_since_last_tool = current_time - self.last_tool_end_time
         in_grace_period = time_since_last_tool < self.overlay_grace_period
 
         if show_overlay and OVERLAY_AVAILABLE and tool_id not in ['list_files', 'get_weather']:
             if in_grace_period and self.overlay_shown:
-                print(f"[ToolManager] [{current_time:.2f}] Keeping existing overlay (grace period: {time_since_last_tool:.1f}s)")
                 overlay_timer = None  # Don't start a new timer, keep existing overlay
             else:
-                print(f"[ToolManager] [{current_time:.2f}] Starting 3-second overlay timer for '{tool_id}'")
                 overlay_timer = threading.Timer(3.0, self._show_overlay)
                 overlay_timer.start()
-        else:
-            print(f"[ToolManager] [{current_time:.2f}] Overlay not started (excluded tool or disabled)")
 
         try:
             # Call the tool
@@ -330,8 +323,6 @@ class ToolManager:
             # (don't hide if it's from a previous tool in grace period)
             if not in_grace_period or not self.overlay_shown:
                 self._hide_overlay()
-            else:
-                print(f"[ToolManager] Keeping overlay active (grace period)")
 
         if error:
             return None, error
@@ -360,23 +351,17 @@ class ToolManager:
 
     def _show_overlay(self):
         """Show fullscreen overlay with EvanAI working message."""
-        current_time = time.time()
-        print(f"[ToolManager] [{current_time:.2f}] _show_overlay called")
         with self.overlay_lock:
             if self.overlay_shown or self.overlay_process:
-                print("[ToolManager] Overlay already shown or process exists, skipping")
                 return
 
             if not OVERLAY_AVAILABLE:
-                print("[ToolManager] OVERLAY_AVAILABLE is False, skipping")
                 return
 
             try:
                 # Launch overlay in a separate process to avoid macOS threading issues
                 overlay_script = Path(__file__).parent / 'overlay_process.py'
-                print(f"[ToolManager] Looking for overlay script at: {overlay_script}")
                 if overlay_script.exists():
-                    print(f"[ToolManager] Launching overlay subprocess with Python: {sys.executable}")
                     # Run the overlay as a subprocess
                     self.overlay_process = subprocess.Popen(
                         [sys.executable, str(overlay_script)],
@@ -385,33 +370,23 @@ class ToolManager:
                         start_new_session=True  # Detach from parent process group
                     )
                     self.overlay_shown = True
-                    print(f"[ToolManager] Overlay process launched with PID: {self.overlay_process.pid}")
-                else:
-                    print(f"[ToolManager] Overlay script not found at {overlay_script}")
             except Exception as e:
-                print(f"[ToolManager] Error launching overlay: {e}")
                 pass
 
     def _hide_overlay(self):
         """Hide the fullscreen overlay if it's shown."""
         with self.overlay_lock:
             if self.overlay_process:
-                print(f"[ToolManager] Hiding overlay (PID: {self.overlay_process.pid})")
                 try:
                     # Terminate the overlay process
                     self.overlay_process.terminate()
                     # Give it a moment to close gracefully
                     try:
                         self.overlay_process.wait(timeout=0.5)
-                        print("[ToolManager] Overlay terminated gracefully")
                     except subprocess.TimeoutExpired:
                         # Force kill if it doesn't terminate
                         self.overlay_process.kill()
-                        print("[ToolManager] Overlay force-killed")
                 except Exception as e:
-                    print(f"[ToolManager] Error hiding overlay: {e}")
                     pass
                 self.overlay_process = None
-            else:
-                print("[ToolManager] No overlay process to hide")
             self.overlay_shown = False

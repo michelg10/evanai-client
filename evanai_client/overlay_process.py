@@ -9,12 +9,34 @@ import platform
 import subprocess
 from pathlib import Path
 
+# Add parent directory to path to import overlay_config
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 try:
     import tkinter as tk
     from PIL import Image, ImageTk
 except ImportError:
     print("Error: tkinter or PIL not available", file=sys.stderr)
     sys.exit(1)
+
+try:
+    from evanai_client.overlay_config import OverlayConfig
+    config = OverlayConfig.get_config()
+except ImportError:
+    # Fallback to default config if import fails
+    config = {
+        'display_mode': 'text',
+        'title': 'EvanAI',
+        'subtitle': 'is working',
+        'title_color': '#4A90E2',
+        'subtitle_color': '#B0C4DE',
+        'background_color': '#0a0e27',
+        'title_font_size': 96,
+        'subtitle_font_size': 48,
+        'show_animation': True,
+        'animation_speed': 600,
+        'icon_path': None,
+    }
 
 
 def create_overlay():
@@ -25,7 +47,7 @@ def create_overlay():
     # Make it fullscreen and on top
     root.attributes('-fullscreen', True)
     root.attributes('-topmost', True)
-    root.configure(bg='#0a0e27')  # Dark blue background
+    root.configure(bg=config['background_color'])
 
     # Force window to front on macOS
     root.lift()
@@ -42,43 +64,67 @@ def create_overlay():
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
 
-    # Always show the text design instead of icon
-    # Create a frame for centering content
-    center_frame = tk.Frame(root, bg='#0a0e27')
-    center_frame.pack(expand=True)
+    # Display based on configuration mode
+    if config['display_mode'] == 'icon' and config['icon_path']:
+        # Icon mode
+        try:
+            img = Image.open(config['icon_path'])
+            target_height = screen_height // 3
+            aspect_ratio = img.width / img.height
+            target_width = int(target_height * aspect_ratio)
+            img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
-    # Main "EvanAI" text with larger, bold font
-    evan_label = tk.Label(
-        center_frame,
-        text="EvanAI",
-        font=('SF Pro Display', 96, 'bold'),
-        fg='#4A90E2',  # Nice blue color
-        bg='#0a0e27'
-    )
-    evan_label.pack()
+            photo = ImageTk.PhotoImage(img)
+            label = tk.Label(root, image=photo, bg=config['background_color'])
+            label.image = photo  # Keep reference
+            label.pack(expand=True)
+        except Exception as e:
+            # Fall back to text if icon fails
+            config['display_mode'] = 'text'
 
-    # "is working..." text with animated dots
-    working_label = tk.Label(
-        center_frame,
-        text="is working...",
-        font=('SF Pro Display', 48),
-        fg='#B0C4DE',  # Lighter blue-gray
-        bg='#0a0e27'
-    )
-    working_label.pack(pady=(10, 0))
+    if config['display_mode'] == 'text':
+        # Text mode (default)
+        center_frame = tk.Frame(root, bg=config['background_color'])
+        center_frame.pack(expand=True)
 
-    # Animation function for dots
-    dot_count = 0
-    def animate_dots():
-        nonlocal dot_count
-        dot_count = (dot_count % 3) + 1
-        dots = "." * dot_count
-        spaces = " " * (3 - dot_count)  # Keep consistent width
-        working_label.config(text=f"is working{dots}{spaces}")
-        root.after(600, animate_dots)  # Update every 600ms
+        # Main title text
+        title_label = tk.Label(
+            center_frame,
+            text=config['title'],
+            font=('SF Pro Display', config['title_font_size'], 'bold'),
+            fg=config['title_color'],
+            bg=config['background_color']
+        )
+        title_label.pack()
 
-    # Start the animation
-    animate_dots()
+        # Subtitle with optional animation
+        subtitle_label = tk.Label(
+            center_frame,
+            text=config['subtitle'] + "..." if config['show_animation'] else config['subtitle'],
+            font=('SF Pro Display', config['subtitle_font_size']),
+            fg=config['subtitle_color'],
+            bg=config['background_color']
+        )
+        subtitle_label.pack(pady=(10, 0))
+
+        # Animation function for dots
+        if config['show_animation']:
+            dot_count = 0
+            def animate_dots():
+                nonlocal dot_count
+                dot_count = (dot_count % 3) + 1
+                dots = "." * dot_count
+                spaces = " " * (3 - dot_count)  # Keep consistent width
+                subtitle_label.config(text=f"{config['subtitle']}{dots}{spaces}")
+                root.after(config['animation_speed'], animate_dots)
+
+            # Start the animation
+            animate_dots()
+
+    elif config['display_mode'] == 'custom' and config.get('custom_content'):
+        # Custom mode for advanced users
+        # This would need to be implemented based on specific requirements
+        pass
 
     # Add subtitle with better positioning
     subtitle = tk.Label(
