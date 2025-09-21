@@ -114,6 +114,13 @@ class ClaudeAgent:
 
                 if extra_headers:
                     stream_kwargs['extra_headers'] = extra_headers
+                    # print(f"[DEBUG] Adding headers to API request: {extra_headers}")
+
+                # Debug output disabled for cleaner output
+                # print(f"[DEBUG] API call with model: {current_model}")
+                # print(f"[DEBUG] Number of tools: {len(tools) if tools else 0}")
+                # if tools and len(tools) > 0:
+                #     print(f"[DEBUG] Tool names: {[t.get('name') for t in tools]}")
 
                 with self.client.messages.stream(**stream_kwargs) as stream:
                     # Process streaming events manually to handle both text and tool use
@@ -316,12 +323,14 @@ class ClaudeAgent:
         if enable_builtin_tools:
             # Get headers for built-in tools
             extra_headers = self.builtin_tools.get_api_headers(enable_builtin_tools)
+            print(f"[INFO] Built-in tools enabled: {enable_builtin_tools}")
 
             # Add built-in tool configurations
             builtin_configs = self.builtin_tools.get_tools_config(
                 enable_builtin_tools,
                 self.model
             )
+            # print(f"[DEBUG] Built-in tool configs: {json.dumps(builtin_configs, indent=2)}")
             all_tools.extend(builtin_configs)
             self.builtin_tools_enabled = enable_builtin_tools
 

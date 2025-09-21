@@ -274,7 +274,8 @@ def test_prompt(prompt, conversation_id):
         prompt,
         conversation.get_history(),
         tools,
-        tool_callback
+        tool_callback,
+        enable_builtin_tools=['web_search', 'web_fetch', 'text_editor']  # Enable ALL built-in tools
     )
 
     print(f"\n{Fore.GREEN}Response:{Style.RESET_ALL}")
