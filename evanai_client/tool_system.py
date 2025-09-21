@@ -8,13 +8,17 @@ import os
 from pathlib import Path
 
 # Try to import tkinter and PIL at module level
+# NOTE: Overlay feature is disabled by default on macOS due to threading limitations
+# macOS requires all GUI operations to happen on the main thread, but our overlay
+# runs in a Timer thread which causes crashes. Enable at your own risk with:
+# export EVANAI_SHOW_OVERLAY=true
 try:
     import tkinter as tk
     from PIL import Image, ImageTk
     OVERLAY_AVAILABLE = True
 except ImportError:
     OVERLAY_AVAILABLE = False
-    print("Warning: tkinter or PIL not available - overlay functionality disabled")
+    # Silently skip if tkinter/PIL not available
 
 
 class ParameterType(Enum):
@@ -285,7 +289,8 @@ class ToolManager:
 
         # Start overlay timer (shows after 3 seconds if tool still running)
         # Skip overlay for certain quick tools or if disabled
-        show_overlay = os.environ.get('EVANAI_SHOW_OVERLAY', 'true').lower() == 'true'
+        # NOTE: Disabled on macOS due to tkinter threading limitations
+        show_overlay = os.environ.get('EVANAI_SHOW_OVERLAY', 'false').lower() == 'true'  # Default to false
         overlay_timer = None
 
         if show_overlay and tool_id not in ['list_files', 'get_weather']:

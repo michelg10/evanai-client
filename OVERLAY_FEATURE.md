@@ -2,6 +2,13 @@
 
 A fullscreen overlay that automatically appears when tools take longer than 3 seconds to execute.
 
+**⚠️ WARNING: This feature is disabled by default on macOS due to threading limitations that cause crashes.**
+
+## Known Issues
+
+- **macOS**: The overlay feature causes crashes on macOS because tkinter GUI operations must run on the main thread, but the overlay is triggered from a Timer thread. This results in the error: `NSWindow should only be instantiated on the main thread!`
+- The feature is disabled by default. Enable at your own risk with: `export EVANAI_SHOW_OVERLAY=true`
+
 ## Features
 
 - **Automatic Trigger**: Shows after 3 seconds of tool execution
