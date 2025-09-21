@@ -235,8 +235,8 @@ RUN mkdir -p /mnt/skills/public/docx \
     /mnt/skills/public/xlsx
 
 # Copy skills directory contents if available
-# NOTE: Temporarily disabled - skills can be mounted at runtime with -v flag
-# COPY --chown=agent:agent ./skills/public/ /mnt/skills/public/
+# NOTE: Skills are copied during build for immediate availability
+COPY --chown=agent:agent ./skills/public/ /mnt/skills/public/
 
 # Configure ImageMagick for PDF processing
 RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \

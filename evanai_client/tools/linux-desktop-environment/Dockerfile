@@ -227,6 +227,9 @@ RUN mkdir -p \
     /opt/pw-browsers \
     /tmp
 
+# Copy skills directory contents if available
+COPY skills/ /mnt/skills/
+
 # Set permissions
 RUN chmod -R 755 /home/claude && \
     chmod -R 755 /mnt/user-data && \

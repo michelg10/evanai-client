@@ -4,6 +4,7 @@ import time
 import uuid
 from flask import Flask, render_template, request, jsonify, Response
 from threading import Lock
+import json
 
 # Try to import CORS, but make it optional
 try:
@@ -72,9 +73,11 @@ class DebugServer:
         self.port = port
         self.runtime_dir = runtime_dir or DEFAULT_RUNTIME_DIR
 
-        # Track tool calls for debugging
+        # Track tool calls for debugging with enhanced features
         self.tool_calls = []
         self.tool_calls_lock = Lock()
+        self.tool_execution_queue = []
+        self.saved_tool_sequences = {}
 
         # Track active conversations
         self.active_conversation = None
@@ -164,6 +167,11 @@ class DebugServer:
         @self.app.route('/')
         def index():
             """Serve the debug interface."""
+            # Check if enhanced version exists, otherwise fall back to original
+            import os
+            template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+            if os.path.exists(os.path.join(template_dir, 'debug_enhanced.html')):
+                return render_template('debug_enhanced.html')
             return render_template('debug.html')
 
         @self.app.route('/api/tools')
@@ -313,6 +321,114 @@ class DebugServer:
                 'conversation_count': len(self.conversation_manager.list_conversations()),
                 'active_conversation': self.active_conversation
             })
+
+        @self.app.route('/api/tool/execute', methods=['POST'])
+        def execute_tool():
+            """Manually execute a tool with given parameters."""
+            data = request.json
+            tool_id = data.get('tool_id')
+            parameters = data.get('parameters', {})
+            conversation_id = data.get('conversation_id', 'debug-session')
+
+            if not tool_id:
+                return jsonify({'error': 'No tool_id provided'}), 400
+
+            # Get or create conversation
+            conversation = self.conversation_manager.get_or_create_conversation(conversation_id)
+
+            # Record the manual tool call
+            tool_call_info = {
+                'tool_id': tool_id,
+                'parameters': parameters,
+                'timestamp': datetime.now().isoformat(),
+                'status': 'calling',
+                'manual': True
+            }
+
+            with self.tool_calls_lock:
+                self.tool_calls.append(tool_call_info)
+
+            # Execute the tool
+            start_time = time.time()
+            result, error = self.tool_manager.call_tool(
+                tool_id,
+                parameters,
+                conversation_id,
+                working_directory=conversation.working_directory
+            )
+            execution_time = time.time() - start_time
+
+            # Update tool call info with result
+            tool_call_info['status'] = 'error' if error else 'success'
+            tool_call_info['result'] = result
+            tool_call_info['error'] = error
+            tool_call_info['execution_time'] = f"{execution_time:.2f}s"
+
+            return jsonify({
+                'tool_id': tool_id,
+                'parameters': parameters,
+                'result': result,
+                'error': error,
+                'execution_time': execution_time,
+                'conversation_id': conversation_id
+            })
+
+        @self.app.route('/api/tool/history')
+        def get_tool_history():
+            """Get tool execution history."""
+            with self.tool_calls_lock:
+                return jsonify({
+                    'history': self.tool_calls[-50:],  # Last 50 tool calls
+                    'total': len(self.tool_calls)
+                })
+
+        @self.app.route('/api/tool/templates')
+        def get_tool_templates():
+            """Get predefined tool parameter templates."""
+            templates = {
+                'bash': [
+                    {'name': 'List files', 'params': {'command': 'ls -la'}},
+                    {'name': 'Check Python', 'params': {'command': 'python3 --version'}},
+                    {'name': 'System info', 'params': {'command': 'uname -a'}},
+                    {'name': 'Memory usage', 'params': {'command': 'free -h'}},
+                    {'name': 'Disk usage', 'params': {'command': 'df -h'}}
+                ],
+                'bash_status': [
+                    {'name': 'Get status', 'params': {}}
+                ],
+                'bash_reset': [
+                    {'name': 'Reset (keep data)', 'params': {'keep_data': True}},
+                    {'name': 'Reset (clean)', 'params': {'keep_data': False}}
+                ]
+            }
+            return jsonify(templates)
+
+        @self.app.route('/api/tool/stream/<tool_id>', methods=['POST'])
+        def stream_tool_execution(tool_id):
+            """Stream tool execution output in real-time."""
+            def generate():
+                # Start tool execution in background
+                data = request.json
+                parameters = data.get('parameters', {})
+                conversation_id = data.get('conversation_id', 'debug-session')
+
+                conversation = self.conversation_manager.get_or_create_conversation(conversation_id)
+
+                # Send initial status
+                yield f"data: {json.dumps({'status': 'starting', 'tool_id': tool_id})}\n\n"
+
+                # Execute tool (in real implementation, this would stream output)
+                result, error = self.tool_manager.call_tool(
+                    tool_id,
+                    parameters,
+                    conversation_id,
+                    working_directory=conversation.working_directory
+                )
+
+                # Send result
+                yield f"data: {json.dumps({'status': 'complete', 'result': result, 'error': error})}\n\n"
+
+            return Response(generate(), mimetype='text/event-stream')
 
     def run(self, debug: bool = True):
         """Run the debug server."""

@@ -1,0 +1,1660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvanAI Debug Interface - Enhanced</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Layout Grid */
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 400px;
+            grid-template-rows: auto 1fr;
+            width: 100%;
+            height: 100vh;
+            gap: 1px;
+            background: #333;
+        }
+
+        /* Header Bar */
+        .header {
+            grid-column: 1 / -1;
+            background: #1a1a1a;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #00ff88;
+        }
+
+        .header h1 {
+            color: #00ff88;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: #00ff8833;
+            border: 1px solid #00ff88;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            background: #222;
+            border-bottom: 1px solid #444;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .sidebar-tab:hover {
+            color: #ccc;
+        }
+
+        .sidebar-tab.active {
+            color: #00ff88;
+            border-bottom-color: #00ff88;
+            background: #1a1a1a;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .tool-category {
+            margin-bottom: 20px;
+        }
+
+        .tool-category-header {
+            color: #ffaa00;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #333;
+        }
+
+        .tool-item {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tool-item:hover {
+            border-color: #00ff88;
+            background: #2a2a2a;
+            transform: translateX(5px);
+        }
+
+        .tool-item-info {
+            flex: 1;
+        }
+
+        .tool-name {
+            color: #00ff88;
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 3px;
+        }
+
+        .tool-desc {
+            color: #888;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .tool-quick-run {
+            padding: 4px 8px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tool-item:hover .tool-quick-run {
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            background: #0f0f0f;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Conversation Area */
+        .conversation-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            max-width: 80%;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #003366, #004488);
+            align-self: flex-end;
+            border: 1px solid #0066cc;
+        }
+
+        .message.assistant {
+            background: linear-gradient(135deg, #1a2f1a, #2a4f2a);
+            align-self: flex-start;
+            border: 1px solid #00ff88;
+        }
+
+        .message.tool-execution {
+            background: linear-gradient(135deg, #3a2f1a, #4a3f2a);
+            align-self: center;
+            border: 1px solid #ffaa00;
+            width: 90%;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        .message-content {
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 20px;
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+        }
+
+        .input-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .input-mode {
+            padding: 6px 12px;
+            background: #222;
+            border: 1px solid #444;
+            color: #888;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .input-mode.active {
+            background: #00ff88;
+            color: #000;
+            border-color: #00ff88;
+        }
+
+        .input-field-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-field {
+            flex: 1;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 50px;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 0 2px #00ff8833;
+        }
+
+        .send-button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px #00ff8833;
+        }
+
+        .send-button:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        /* Tool Panel */
+        .tool-panel {
+            background: #1a1a1a;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tool-panel-header {
+            padding: 15px;
+            background: #222;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tool-panel-title {
+            color: #ffaa00;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .tool-panel-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tool-panel-button {
+            padding: 5px 10px;
+            background: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tool-panel-button:hover {
+            background: #444;
+            border-color: #00ff88;
+        }
+
+        .tool-executions {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .tool-execution-item {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        .tool-execution-item.running {
+            border-color: #ffaa00;
+            animation: borderPulse 1s infinite;
+        }
+
+        @keyframes borderPulse {
+            0%, 100% { border-color: #ffaa00; }
+            50% { border-color: #ff8800; }
+        }
+
+        .tool-execution-item.success {
+            border-color: #00ff88;
+        }
+
+        .tool-execution-item.error {
+            border-color: #ff4444;
+        }
+
+        .tool-execution-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .tool-execution-name {
+            color: #ffaa00;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .tool-execution-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .status-badge.running {
+            background: #ffaa0033;
+            color: #ffaa00;
+        }
+
+        .status-badge.success {
+            background: #00ff8833;
+            color: #00ff88;
+        }
+
+        .status-badge.error {
+            background: #ff444433;
+            color: #ff4444;
+        }
+
+        .tool-execution-details {
+            font-size: 12px;
+        }
+
+        .execution-section {
+            margin-top: 8px;
+            padding: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            border: 1px solid #333;
+        }
+
+        .execution-label {
+            color: #888;
+            font-size: 10px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .execution-content {
+            color: #e0e0e0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        /* Tool Builder Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 2px solid #00ff88;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0, 255, 136, 0.2);
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #222, #2a2a2a);
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            color: #00ff88;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+            background: #ff444433;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .tool-builder {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .builder-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .builder-section-title {
+            color: #ffaa00;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #444;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-label {
+            color: #888;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .form-input {
+            padding: 10px;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        .form-select {
+            padding: 10px;
+            background: #222;
+            border: 1px solid #444;
+            color: #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .template-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .template-chip {
+            padding: 6px 12px;
+            background: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            border-radius: 20px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .template-chip:hover {
+            background: #00ff88;
+            color: #000;
+            border-color: #00ff88;
+        }
+
+        .parameter-builder {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .parameter-item {
+            display: grid;
+            grid-template-columns: 150px 1fr auto;
+            gap: 10px;
+            align-items: center;
+            padding: 10px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+        }
+
+        .parameter-remove {
+            padding: 5px 10px;
+            background: #ff444433;
+            color: #ff4444;
+            border: 1px solid #ff4444;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .add-parameter {
+            padding: 8px;
+            background: #00ff8833;
+            border: 1px dashed #00ff88;
+            color: #00ff88;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .add-parameter:hover {
+            background: #00ff8844;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            background: #222;
+            border-top: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-info {
+            color: #888;
+            font-size: 11px;
+        }
+
+        .footer-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .button-secondary {
+            padding: 10px 20px;
+            background: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .button-secondary:hover {
+            background: #444;
+            border-color: #888;
+        }
+
+        .button-primary {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #00ff88, #00cc6a);
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .button-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px #00ff8833;
+        }
+
+        .button-primary:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        /* Tool Queue */
+        .tool-queue {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1a1a1a;
+            border: 2px solid #ffaa00;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 300px;
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 5px 20px rgba(255, 170, 0, 0.3);
+            display: none;
+        }
+
+        .tool-queue.show {
+            display: block;
+        }
+
+        .queue-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #444;
+        }
+
+        .queue-title {
+            color: #ffaa00;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        .queue-close {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .queue-item {
+            padding: 8px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .queue-item.executing {
+            border-color: #00ff88;
+            animation: pulse 1s infinite;
+        }
+
+        .queue-item-info {
+            flex: 1;
+        }
+
+        .queue-item-name {
+            color: #00ff88;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .queue-item-status {
+            color: #888;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        .queue-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .queue-control {
+            padding: 4px 8px;
+            background: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #111;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Loading Animation */
+        .loading-dots {
+            display: inline-flex;
+            gap: 3px;
+        }
+
+        .loading-dot {
+            width: 6px;
+            height: 6px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: loadingDot 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+        .loading-dot:nth-child(3) { animation-delay: 0; }
+
+        @keyframes loadingDot {
+            0%, 80%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            40% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                <span>🤖</span>
+                <span>EvanAI Debug Interface</span>
+                <span style="color: #888; font-size: 12px;">v2.0</span>
+            </h1>
+            <div class="header-controls">
+                <div class="status-indicator">
+                    <div class="pulse"></div>
+                    <span>System Ready</span>
+                </div>
+                <button class="tool-panel-button" onclick="toggleQueue()">
+                    📋 Queue (0)
+                </button>
+                <button class="tool-panel-button" onclick="openToolBuilder()">
+                    🛠️ Tool Builder
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" onclick="switchSidebarTab('tools')">Tools</button>
+                <button class="sidebar-tab" onclick="switchSidebarTab('history')">History</button>
+                <button class="sidebar-tab" onclick="switchSidebarTab('templates')">Templates</button>
+            </div>
+            <div class="sidebar-content" id="sidebar-content">
+                <!-- Dynamic content loaded here -->
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="conversation-area" id="conversation-area">
+                <!-- Messages will appear here -->
+            </div>
+            <div class="input-area">
+                <div class="input-controls">
+                    <button class="input-mode active" data-mode="chat">💬 Chat</button>
+                    <button class="input-mode" data-mode="tool">⚡ Tool</button>
+                    <button class="input-mode" data-mode="sequence">📝 Sequence</button>
+                </div>
+                <div class="input-field-container">
+                    <textarea id="input-field" class="input-field" placeholder="Enter your message or command..."></textarea>
+                    <button id="send-button" class="send-button" onclick="handleSend()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tool Panel -->
+        <div class="tool-panel">
+            <div class="tool-panel-header">
+                <div class="tool-panel-title">⚡ Live Executions</div>
+                <div class="tool-panel-controls">
+                    <button class="tool-panel-button" onclick="clearExecutions()">Clear</button>
+                    <button class="tool-panel-button" onclick="exportExecutions()">Export</button>
+                </div>
+            </div>
+            <div class="tool-executions" id="tool-executions">
+                <!-- Tool executions will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tool Builder Modal -->
+    <div id="tool-builder-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">🛠️ Advanced Tool Builder</div>
+                <button class="modal-close" onclick="closeToolBuilder()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tool-builder">
+                    <div class="builder-section">
+                        <div class="builder-section-title">Tool Selection</div>
+                        <div class="form-group">
+                            <label class="form-label">Tool</label>
+                            <select id="builder-tool-select" class="form-select" onchange="updateBuilderParams()">
+                                <option value="">-- Select Tool --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Quick Templates</label>
+                            <div class="template-chips" id="template-chips">
+                                <!-- Template chips will appear here -->
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Execution Mode</label>
+                            <select class="form-select">
+                                <option>Immediate</option>
+                                <option>Queue</option>
+                                <option>Schedule</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="builder-section">
+                        <div class="builder-section-title">Parameters</div>
+                        <div class="parameter-builder" id="parameter-builder">
+                            <!-- Parameters will be built here -->
+                        </div>
+                        <div class="add-parameter" onclick="addParameter()">
+                            + Add Parameter
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <div class="footer-info">
+                    <span id="builder-status">Ready to execute</span>
+                </div>
+                <div class="footer-actions">
+                    <button class="button-secondary" onclick="saveAsTemplate()">Save as Template</button>
+                    <button class="button-secondary" onclick="testTool()">Test</button>
+                    <button class="button-primary" id="execute-tool-button" onclick="executeTool()">Execute Tool</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tool Queue Widget -->
+    <div id="tool-queue" class="tool-queue">
+        <div class="queue-header">
+            <div class="queue-title">📋 Execution Queue</div>
+            <button class="queue-close" onclick="closeQueue()">&times;</button>
+        </div>
+        <div id="queue-items">
+            <!-- Queue items will appear here -->
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        const state = {
+            conversationId: 'debug-' + Date.now(),
+            currentMode: 'chat',
+            toolHistory: [],
+            executionQueue: [],
+            availableTools: [],
+            templates: {},
+            activeTab: 'tools',
+            isExecuting: false
+        };
+
+        // WebSocket for real-time updates (optional)
+        let ws = null;
+
+        // Initialize
+        window.onload = () => {
+            initializeApp();
+        };
+
+        async function initializeApp() {
+            await loadTools();
+            await loadTemplates();
+            await loadHistory();
+            setupEventListeners();
+            updateUI();
+
+            // Connect WebSocket for real-time updates
+            // connectWebSocket();
+        }
+
+        // Load available tools
+        async function loadTools() {
+            try {
+                const response = await fetch('/api/tools');
+                const data = await response.json();
+                state.availableTools = data.tools;
+                renderTools();
+                updateToolSelect();
+            } catch (error) {
+                console.error('Failed to load tools:', error);
+                showNotification('Failed to load tools', 'error');
+            }
+        }
+
+        // Load templates
+        async function loadTemplates() {
+            try {
+                const response = await fetch('/api/tool/templates');
+                const data = await response.json();
+                state.templates = data;
+            } catch (error) {
+                console.error('Failed to load templates:', error);
+            }
+        }
+
+        // Load history
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/tool/history');
+                const data = await response.json();
+                state.toolHistory = data.history || [];
+            } catch (error) {
+                console.error('Failed to load history:', error);
+            }
+        }
+
+        // Render tools in sidebar
+        function renderTools() {
+            const content = document.getElementById('sidebar-content');
+            if (state.activeTab !== 'tools') return;
+
+            const toolsByCategory = {};
+            state.availableTools.forEach(tool => {
+                const category = tool.category || 'General';
+                if (!toolsByCategory[category]) {
+                    toolsByCategory[category] = [];
+                }
+                toolsByCategory[category].push(tool);
+            });
+
+            let html = '';
+            Object.entries(toolsByCategory).forEach(([category, tools]) => {
+                html += `
+                    <div class="tool-category">
+                        <div class="tool-category-header">${category}</div>
+                        ${tools.map(tool => `
+                            <div class="tool-item" onclick="selectTool('${tool.name}')">
+                                <div class="tool-item-info">
+                                    <div class="tool-name">${tool.name}</div>
+                                    <div class="tool-desc">${tool.description || ''}</div>
+                                </div>
+                                <button class="tool-quick-run" onclick="quickRunTool('${tool.name}', event)">Run</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+            content.innerHTML = html;
+        }
+
+        // Quick run tool
+        async function quickRunTool(toolName, event) {
+            event.stopPropagation();
+
+            const tool = state.availableTools.find(t => t.name === toolName);
+            if (!tool) return;
+
+            // Simple tools without required parameters
+            const simpleTools = ['bash_status', 'system_info'];
+            if (simpleTools.includes(toolName)) {
+                await executeTool(toolName, {});
+            } else {
+                // Open builder for complex tools
+                openToolBuilder();
+                document.getElementById('builder-tool-select').value = toolName;
+                updateBuilderParams();
+            }
+        }
+
+        // Execute tool
+        async function executeTool(toolName, parameters) {
+            if (state.isExecuting) {
+                addToQueue(toolName, parameters);
+                return;
+            }
+
+            state.isExecuting = true;
+            const executionId = 'exec-' + Date.now();
+
+            // Add to UI immediately
+            addExecutionToUI({
+                id: executionId,
+                tool_id: toolName || document.getElementById('builder-tool-select').value,
+                parameters: parameters || getBuilderParameters(),
+                status: 'running',
+                timestamp: new Date().toISOString()
+            });
+
+            try {
+                const response = await fetch('/api/tool/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tool_id: toolName || document.getElementById('builder-tool-select').value,
+                        parameters: parameters || getBuilderParameters(),
+                        conversation_id: state.conversationId
+                    })
+                });
+
+                const result = await response.json();
+
+                // Update execution in UI
+                updateExecutionInUI(executionId, {
+                    status: result.error ? 'error' : 'success',
+                    result: result.result,
+                    error: result.error,
+                    execution_time: result.execution_time
+                });
+
+                // Add to conversation
+                addToConversation('tool-execution', formatToolResult(result));
+
+                // Close modal if open
+                if (document.getElementById('tool-builder-modal').classList.contains('show')) {
+                    closeToolBuilder();
+                }
+
+            } catch (error) {
+                updateExecutionInUI(executionId, {
+                    status: 'error',
+                    error: error.message
+                });
+                showNotification('Tool execution failed', 'error');
+            } finally {
+                state.isExecuting = false;
+                processQueue();
+            }
+        }
+
+        // Add execution to UI
+        function addExecutionToUI(execution) {
+            const container = document.getElementById('tool-executions');
+            const item = document.createElement('div');
+            item.className = `tool-execution-item ${execution.status}`;
+            item.id = execution.id;
+            item.innerHTML = `
+                <div class="tool-execution-header">
+                    <div class="tool-execution-name">${execution.tool_id}</div>
+                    <div class="tool-execution-status">
+                        <span class="status-badge ${execution.status}">${execution.status}</span>
+                        ${execution.status === 'running' ? `
+                            <div class="loading-dots">
+                                <div class="loading-dot"></div>
+                                <div class="loading-dot"></div>
+                                <div class="loading-dot"></div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="tool-execution-details">
+                    ${execution.parameters ? `
+                        <div class="execution-section">
+                            <div class="execution-label">Parameters</div>
+                            <div class="execution-content">${JSON.stringify(execution.parameters, null, 2)}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            container.insertBefore(item, container.firstChild);
+        }
+
+        // Update execution in UI
+        function updateExecutionInUI(executionId, updates) {
+            const item = document.getElementById(executionId);
+            if (!item) return;
+
+            item.className = `tool-execution-item ${updates.status}`;
+
+            const statusBadge = item.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = `status-badge ${updates.status}`;
+                statusBadge.textContent = updates.status;
+            }
+
+            const details = item.querySelector('.tool-execution-details');
+            if (updates.result) {
+                details.innerHTML += `
+                    <div class="execution-section">
+                        <div class="execution-label">Result</div>
+                        <div class="execution-content">${JSON.stringify(updates.result, null, 2)}</div>
+                    </div>
+                `;
+            }
+            if (updates.error) {
+                details.innerHTML += `
+                    <div class="execution-section" style="border-color: #ff4444;">
+                        <div class="execution-label" style="color: #ff4444;">Error</div>
+                        <div class="execution-content" style="color: #ff4444;">${updates.error}</div>
+                    </div>
+                `;
+            }
+            if (updates.execution_time) {
+                details.innerHTML += `
+                    <div class="execution-section">
+                        <div class="execution-label">Execution Time</div>
+                        <div class="execution-content">${updates.execution_time.toFixed(2)}s</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Add to conversation
+        function addToConversation(type, content) {
+            const container = document.getElementById('conversation-area');
+            const message = document.createElement('div');
+            message.className = `message ${type}`;
+            message.innerHTML = `
+                <div class="message-header">
+                    <span>${type === 'user' ? '👤 User' : type === 'assistant' ? '🤖 Assistant' : '⚡ Tool'}</span>
+                    <span>${new Date().toLocaleTimeString()}</span>
+                </div>
+                <div class="message-content">${content}</div>
+            `;
+            container.appendChild(message);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Format tool result
+        function formatToolResult(result) {
+            if (result.error) {
+                return `❌ Error: ${result.error}`;
+            }
+            return `✅ ${result.tool_id} executed successfully\n\nResult:\n${JSON.stringify(result.result, null, 2)}`;
+        }
+
+        // Handle send
+        async function handleSend() {
+            const input = document.getElementById('input-field');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const mode = state.currentMode;
+
+            if (mode === 'chat') {
+                // Send as chat
+                addToConversation('user', text);
+                input.value = '';
+
+                // Send to backend
+                try {
+                    const response = await fetch('/api/prompt', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: text,
+                            conversation_id: state.conversationId
+                        })
+                    });
+
+                    const data = await response.json();
+                    addToConversation('assistant', data.response || data.error);
+
+                    // Show tool calls if any
+                    if (data.tool_calls && data.tool_calls.length > 0) {
+                        data.tool_calls.forEach(call => {
+                            addExecutionToUI({
+                                id: 'auto-' + Date.now() + '-' + Math.random(),
+                                tool_id: call.tool_id,
+                                parameters: call.parameters,
+                                status: call.status,
+                                result: call.result,
+                                error: call.error,
+                                execution_time: call.execution_time,
+                                timestamp: call.timestamp
+                            });
+                        });
+                    }
+                } catch (error) {
+                    addToConversation('assistant', `Error: ${error.message}`);
+                }
+            } else if (mode === 'tool') {
+                // Parse as tool command
+                openToolBuilder();
+            } else if (mode === 'sequence') {
+                // Execute as sequence
+                const commands = text.split('\n').filter(cmd => cmd.trim());
+                for (const cmd of commands) {
+                    // Parse and execute each command
+                    // Format: toolname param1=value1 param2=value2
+                    const parts = cmd.split(' ');
+                    const toolName = parts[0];
+                    const params = {};
+                    parts.slice(1).forEach(part => {
+                        const [key, value] = part.split('=');
+                        if (key && value) {
+                            params[key] = value;
+                        }
+                    });
+                    await executeTool(toolName, params);
+                }
+                input.value = '';
+            }
+        }
+
+        // Switch sidebar tab
+        function switchSidebarTab(tab) {
+            state.activeTab = tab;
+            document.querySelectorAll('.sidebar-tab').forEach(t => {
+                t.classList.toggle('active', t.textContent.toLowerCase() === tab);
+            });
+
+            if (tab === 'tools') {
+                renderTools();
+            } else if (tab === 'history') {
+                renderHistory();
+            } else if (tab === 'templates') {
+                renderTemplates();
+            }
+        }
+
+        // Render history
+        function renderHistory() {
+            const content = document.getElementById('sidebar-content');
+            const history = state.toolHistory.slice(-20).reverse();
+
+            content.innerHTML = `
+                <div style="padding: 10px;">
+                    <div style="color: #888; font-size: 12px; margin-bottom: 10px;">Recent Executions</div>
+                    ${history.map(item => `
+                        <div class="tool-item" onclick="replayExecution('${item.tool_id}', ${JSON.stringify(item.parameters || {}).replace(/"/g, '&quot;')})">
+                            <div class="tool-item-info">
+                                <div class="tool-name">${item.tool_id}</div>
+                                <div class="tool-desc">${new Date(item.timestamp).toLocaleString()}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Render templates
+        function renderTemplates() {
+            const content = document.getElementById('sidebar-content');
+
+            let html = '<div style="padding: 10px;">';
+            Object.entries(state.templates).forEach(([toolName, templates]) => {
+                if (templates && templates.length > 0) {
+                    html += `
+                        <div class="tool-category">
+                            <div class="tool-category-header">${toolName}</div>
+                            ${templates.map(template => `
+                                <div class="tool-item" onclick='applyTemplate(${JSON.stringify(template)})'>
+                                    <div class="tool-item-info">
+                                        <div class="tool-name">${template.name}</div>
+                                        <div class="tool-desc">${JSON.stringify(template.params)}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+            });
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        // Tool Builder Functions
+        function openToolBuilder() {
+            document.getElementById('tool-builder-modal').classList.add('show');
+        }
+
+        function closeToolBuilder() {
+            document.getElementById('tool-builder-modal').classList.remove('show');
+        }
+
+        function updateToolSelect() {
+            const select = document.getElementById('builder-tool-select');
+            select.innerHTML = '<option value="">-- Select Tool --</option>';
+            state.availableTools.forEach(tool => {
+                const option = document.createElement('option');
+                option.value = tool.name;
+                option.textContent = tool.name;
+                select.appendChild(option);
+            });
+        }
+
+        function updateBuilderParams() {
+            const toolName = document.getElementById('builder-tool-select').value;
+            if (!toolName) return;
+
+            const tool = state.availableTools.find(t => t.name === toolName);
+            if (!tool) return;
+
+            const container = document.getElementById('parameter-builder');
+            container.innerHTML = '';
+
+            if (tool.input_schema && tool.input_schema.properties) {
+                Object.entries(tool.input_schema.properties).forEach(([key, schema]) => {
+                    const item = document.createElement('div');
+                    item.className = 'parameter-item';
+
+                    let inputType = 'text';
+                    let inputElement = '';
+
+                    if (schema.type === 'boolean') {
+                        inputElement = `
+                            <select class="form-input" data-param="${key}">
+                                <option value="false">false</option>
+                                <option value="true">true</option>
+                            </select>
+                        `;
+                    } else if (schema.type === 'integer' || schema.type === 'number') {
+                        inputElement = `<input type="number" class="form-input" data-param="${key}" value="${schema.default || ''}">`;
+                    } else if (key === 'command' || schema.type === 'object' || schema.type === 'array') {
+                        inputElement = `<textarea class="form-input" data-param="${key}" rows="3">${schema.default || ''}</textarea>`;
+                    } else {
+                        inputElement = `<input type="text" class="form-input" data-param="${key}" value="${schema.default || ''}">`;
+                    }
+
+                    item.innerHTML = `
+                        <div>
+                            <div style="color: #ffaa00; font-size: 11px; margin-bottom: 3px;">${key}</div>
+                            <div style="color: #666; font-size: 10px;">${schema.description || ''}</div>
+                        </div>
+                        ${inputElement}
+                        <button class="parameter-remove" onclick="this.parentElement.remove()">Remove</button>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+
+            // Show templates
+            const templateContainer = document.getElementById('template-chips');
+            templateContainer.innerHTML = '';
+            if (state.templates[toolName]) {
+                state.templates[toolName].forEach(template => {
+                    const chip = document.createElement('div');
+                    chip.className = 'template-chip';
+                    chip.textContent = template.name;
+                    chip.onclick = () => applyTemplate(template);
+                    templateContainer.appendChild(chip);
+                });
+            }
+        }
+
+        function applyTemplate(template) {
+            if (template.params) {
+                Object.entries(template.params).forEach(([key, value]) => {
+                    const input = document.querySelector(`[data-param="${key}"]`);
+                    if (input) {
+                        if (typeof value === 'object') {
+                            input.value = JSON.stringify(value, null, 2);
+                        } else {
+                            input.value = value;
+                        }
+                    }
+                });
+            }
+        }
+
+        function getBuilderParameters() {
+            const params = {};
+            document.querySelectorAll('[data-param]').forEach(input => {
+                const key = input.dataset.param;
+                let value = input.value;
+
+                // Type conversion
+                if (input.type === 'number') {
+                    value = value ? Number(value) : undefined;
+                } else if (input.tagName === 'SELECT' && (value === 'true' || value === 'false')) {
+                    value = value === 'true';
+                } else if (value && (value.startsWith('{') || value.startsWith('['))) {
+                    try {
+                        value = JSON.parse(value);
+                    } catch (e) {
+                        // Keep as string if not valid JSON
+                    }
+                }
+
+                if (value !== undefined && value !== '') {
+                    params[key] = value;
+                }
+            });
+            return params;
+        }
+
+        // Queue Management
+        function addToQueue(toolName, parameters) {
+            state.executionQueue.push({
+                tool_id: toolName,
+                parameters: parameters,
+                id: 'queue-' + Date.now()
+            });
+            updateQueueUI();
+            showNotification('Added to queue', 'info');
+        }
+
+        function processQueue() {
+            if (state.executionQueue.length > 0 && !state.isExecuting) {
+                const item = state.executionQueue.shift();
+                executeTool(item.tool_id, item.parameters);
+                updateQueueUI();
+            }
+        }
+
+        function updateQueueUI() {
+            const count = state.executionQueue.length;
+            document.querySelectorAll('[onclick="toggleQueue()"]').forEach(btn => {
+                btn.textContent = `📋 Queue (${count})`;
+            });
+
+            const queueItems = document.getElementById('queue-items');
+            if (queueItems) {
+                queueItems.innerHTML = state.executionQueue.map(item => `
+                    <div class="queue-item">
+                        <div class="queue-item-info">
+                            <div class="queue-item-name">${item.tool_id}</div>
+                            <div class="queue-item-status">Waiting...</div>
+                        </div>
+                        <div class="queue-controls">
+                            <button class="queue-control" onclick="removeFromQueue('${item.id}')">×</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function toggleQueue() {
+            const queue = document.getElementById('tool-queue');
+            queue.classList.toggle('show');
+        }
+
+        function closeQueue() {
+            document.getElementById('tool-queue').classList.remove('show');
+        }
+
+        // Utility Functions
+        function setupEventListeners() {
+            // Input mode switching
+            document.querySelectorAll('.input-mode').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.input-mode').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.currentMode = btn.dataset.mode;
+                    updateInputPlaceholder();
+                });
+            });
+
+            // Enter to send
+            document.getElementById('input-field').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
+        }
+
+        function updateInputPlaceholder() {
+            const input = document.getElementById('input-field');
+            const placeholders = {
+                chat: 'Enter your message...',
+                tool: 'Enter tool command (e.g., bash command="ls -la")...',
+                sequence: 'Enter tool sequence (one per line)...'
+            };
+            input.placeholder = placeholders[state.currentMode] || placeholders.chat;
+        }
+
+        function updateUI() {
+            renderTools();
+            updateQueueUI();
+            updateInputPlaceholder();
+        }
+
+        function showNotification(message, type = 'info') {
+            // Could implement a toast notification system
+            console.log(`[${type}] ${message}`);
+        }
+
+        function clearExecutions() {
+            document.getElementById('tool-executions').innerHTML = '';
+        }
+
+        function exportExecutions() {
+            const executions = Array.from(document.querySelectorAll('.tool-execution-item')).map(item => {
+                return {
+                    tool: item.querySelector('.tool-execution-name').textContent,
+                    status: item.querySelector('.status-badge').textContent,
+                    details: item.querySelector('.tool-execution-details').textContent
+                };
+            });
+
+            const blob = new Blob([JSON.stringify(executions, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `executions-${Date.now()}.json`;
+            a.click();
+        }
+    </script>
+</body>
+</html>

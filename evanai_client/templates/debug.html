@@ -379,6 +379,178 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            color: #00ff88;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .tool-selector {
+            margin-bottom: 20px;
+        }
+
+        .tool-selector select {
+            width: 100%;
+            padding: 10px;
+            background: #222;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .parameter-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .parameter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .parameter-label {
+            color: #ffaa00;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .parameter-desc {
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 5px;
+        }
+
+        .parameter-input {
+            padding: 10px;
+            background: #222;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+        }
+
+        .parameter-input:focus {
+            outline: none;
+            border-color: #00ff88;
+        }
+
+        textarea.parameter-input {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #333;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .execute-button {
+            padding: 10px 20px;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .execute-button:hover {
+            background: #00cc6a;
+        }
+
+        .execute-button:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
+
+        .tool-result-display {
+            margin-top: 20px;
+            padding: 15px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .tool-result-display.show {
+            display: block;
+        }
+
+        .tool-result-display pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #e0e0e0;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -395,6 +567,8 @@
         <div class="sidebar-section">
             <h3>🎮 Controls</h3>
             <button class="action-button" onclick="loadTools()">🔄 Refresh Tools</button>
+            <br><br>
+            <button class="action-button" onclick="openManualToolModal()">🔧 Manual Tool Call</button>
             <br><br>
             <button class="action-button danger" onclick="resetConversation()">🗑️ Reset Conversation</button>
         </div>
@@ -441,10 +615,36 @@
         </div>
     </div>
 
+    <!-- Manual Tool Call Modal -->
+    <div id="manualToolModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔧 Manual Tool Execution</h2>
+                <button class="modal-close" onclick="closeManualToolModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="tool-selector">
+                    <label style="color: #888; font-size: 12px; display: block; margin-bottom: 5px;">Select Tool:</label>
+                    <select id="toolSelect" onchange="updateToolParameters()"></select>
+                </div>
+                <div id="parameterInputs" class="parameter-inputs"></div>
+                <div id="toolResultDisplay" class="tool-result-display">
+                    <strong style="color: #00ff88;">Result:</strong>
+                    <pre id="toolResultContent"></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="action-button" onclick="closeManualToolModal()">Cancel</button>
+                <button id="executeToolButton" class="execute-button" onclick="executeManualTool()">Execute</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let conversationId = 'debug-session-' + Date.now();
         let messageCount = 0;
         let isProcessing = false;
+        let availableTools = [];
 
         // Update conversation UUID display
         function updateConversationDisplay() {
@@ -467,6 +667,8 @@
             try {
                 const response = await fetch('/api/tools');
                 const data = await response.json();
+
+                availableTools = data.tools;
 
                 const toolsList = document.getElementById('tools-list');
                 toolsList.innerHTML = '';
@@ -670,6 +872,211 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Manual Tool Modal Functions
+        function openManualToolModal() {
+            const modal = document.getElementById('manualToolModal');
+            const select = document.getElementById('toolSelect');
+
+            // Clear previous results
+            document.getElementById('toolResultDisplay').classList.remove('show');
+            document.getElementById('toolResultContent').textContent = '';
+
+            // Populate tool dropdown
+            select.innerHTML = '<option value="">-- Select a tool --</option>';
+            availableTools.forEach((tool, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = tool.name;
+                select.appendChild(option);
+            });
+
+            // Clear parameter inputs
+            document.getElementById('parameterInputs').innerHTML = '';
+
+            modal.classList.add('show');
+        }
+
+        function closeManualToolModal() {
+            document.getElementById('manualToolModal').classList.remove('show');
+        }
+
+        function updateToolParameters() {
+            const select = document.getElementById('toolSelect');
+            const selectedIndex = select.value;
+            const paramContainer = document.getElementById('parameterInputs');
+
+            if (!selectedIndex || selectedIndex === '') {
+                paramContainer.innerHTML = '';
+                return;
+            }
+
+            const tool = availableTools[selectedIndex];
+            paramContainer.innerHTML = '';
+
+            if (tool.input_schema && tool.input_schema.properties) {
+                Object.entries(tool.input_schema.properties).forEach(([key, schema]) => {
+                    const paramGroup = document.createElement('div');
+                    paramGroup.className = 'parameter-group';
+
+                    const label = document.createElement('label');
+                    label.className = 'parameter-label';
+                    label.textContent = key + (tool.input_schema.required && tool.input_schema.required.includes(key) ? ' *' : '');
+                    paramGroup.appendChild(label);
+
+                    if (schema.description) {
+                        const desc = document.createElement('div');
+                        desc.className = 'parameter-desc';
+                        desc.textContent = schema.description;
+                        paramGroup.appendChild(desc);
+                    }
+
+                    let input;
+                    if (schema.type === 'boolean') {
+                        input = document.createElement('select');
+                        input.className = 'parameter-input';
+                        input.innerHTML = '<option value="false">false</option><option value="true">true</option>';
+                    } else if (schema.type === 'integer' || schema.type === 'number') {
+                        input = document.createElement('input');
+                        input.type = 'number';
+                        input.className = 'parameter-input';
+                        if (schema.default !== undefined) {
+                            input.value = schema.default;
+                        }
+                    } else if (schema.type === 'object' || schema.type === 'array') {
+                        input = document.createElement('textarea');
+                        input.className = 'parameter-input';
+                        input.placeholder = 'Enter JSON...';
+                        if (schema.default !== undefined) {
+                            input.value = JSON.stringify(schema.default, null, 2);
+                        }
+                    } else {
+                        // String or other types
+                        if (key === 'command' || (schema.description && schema.description.includes('command'))) {
+                            input = document.createElement('textarea');
+                        } else {
+                            input = document.createElement('input');
+                            input.type = 'text';
+                        }
+                        input.className = 'parameter-input';
+                        if (schema.default !== undefined) {
+                            input.value = schema.default;
+                        }
+                    }
+
+                    input.id = 'param_' + key;
+                    paramGroup.appendChild(input);
+
+                    paramContainer.appendChild(paramGroup);
+                });
+            } else {
+                paramContainer.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No parameters required for this tool</div>';
+            }
+        }
+
+        async function executeManualTool() {
+            const select = document.getElementById('toolSelect');
+            const selectedIndex = select.value;
+
+            if (!selectedIndex || selectedIndex === '') {
+                alert('Please select a tool');
+                return;
+            }
+
+            const tool = availableTools[selectedIndex];
+            const button = document.getElementById('executeToolButton');
+            button.disabled = true;
+
+            // Gather parameters
+            const parameters = {};
+            if (tool.input_schema && tool.input_schema.properties) {
+                for (const [key, schema] of Object.entries(tool.input_schema.properties)) {
+                    const input = document.getElementById('param_' + key);
+                    if (input) {
+                        let value = input.value;
+
+                        // Convert types
+                        if (schema.type === 'boolean') {
+                            value = value === 'true';
+                        } else if (schema.type === 'integer' || schema.type === 'number') {
+                            value = value ? Number(value) : undefined;
+                        } else if (schema.type === 'object' || schema.type === 'array') {
+                            try {
+                                value = value ? JSON.parse(value) : undefined;
+                            } catch (e) {
+                                alert(`Invalid JSON for parameter ${key}: ${e.message}`);
+                                button.disabled = false;
+                                return;
+                            }
+                        }
+
+                        if (value !== undefined && value !== '') {
+                            parameters[key] = value;
+                        }
+                    }
+                }
+            }
+
+            // Check required parameters
+            if (tool.input_schema && tool.input_schema.required) {
+                for (const key of tool.input_schema.required) {
+                    if (!(key in parameters)) {
+                        alert(`Required parameter missing: ${key}`);
+                        button.disabled = false;
+                        return;
+                    }
+                }
+            }
+
+            try {
+                const response = await fetch('/api/tool/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tool_id: tool.name,
+                        parameters: parameters,
+                        conversation_id: conversationId
+                    })
+                });
+
+                const data = await response.json();
+
+                // Display result
+                const resultDisplay = document.getElementById('toolResultDisplay');
+                const resultContent = document.getElementById('toolResultContent');
+
+                if (data.error) {
+                    resultContent.textContent = `Error: ${data.error}`;
+                    resultDisplay.style.borderColor = '#ff4444';
+                } else {
+                    resultContent.textContent = JSON.stringify(data.result, null, 2);
+                    resultDisplay.style.borderColor = '#00ff88';
+                }
+
+                resultDisplay.classList.add('show');
+
+                // Also add to tool calls display
+                const toolCall = {
+                    tool_id: tool.name,
+                    parameters: parameters,
+                    result: data.result,
+                    error: data.error,
+                    status: data.error ? 'error' : 'success',
+                    execution_time: data.execution_time ? `${data.execution_time.toFixed(2)}s` : '',
+                    manual: true
+                };
+                displayToolCalls([toolCall]);
+
+            } catch (error) {
+                const resultDisplay = document.getElementById('toolResultDisplay');
+                const resultContent = document.getElementById('toolResultContent');
+                resultContent.textContent = `Request failed: ${error.message}`;
+                resultDisplay.style.borderColor = '#ff4444';
+                resultDisplay.classList.add('show');
+            } finally {
+                button.disabled = false;
+            }
         }
     </script>
 </body>
