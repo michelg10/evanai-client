@@ -99,6 +99,18 @@ class ConversationManager:
             # Create a tool callback that includes the conversation_id and working directory
             def tool_callback(tool_id: str, parameters: Dict[str, Any]) -> tuple:
                 print(f"Calling tool: {tool_id} with parameters: {parameters}")
+
+                # Get the tool's display name
+                display_name = tool_id  # Default to tool_id
+                if tool_id in self.tool_manager.tools:
+                    display_name = self.tool_manager.tools[tool_id].get_display_name()
+
+                # Broadcast the tool call
+                try:
+                    self.websocket_handler.broadcast_tool_call(conversation_id, tool_id, display_name, parameters)
+                except Exception as e:
+                    print(f"Failed to broadcast tool call: {e}")
+
                 result, error = self.tool_manager.call_tool(
                     tool_id,
                     parameters,

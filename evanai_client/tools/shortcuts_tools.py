@@ -30,6 +30,7 @@ class ShortcutsToolProvider(BaseToolSetProvider):
             Tool(
                 id="get_calendar_events",
                 name="get_calendar_events",
+                display_name="Get Calendar Events",
                 description="Fetch calendar events from Apple Calendar within a specified date range",
                 parameters={
                     "calendar": Parameter(
@@ -56,6 +57,7 @@ class ShortcutsToolProvider(BaseToolSetProvider):
             Tool(
                 id="send_email",
                 name="send_email",
+                display_name="Send Email",
                 description="Send an email using Apple Mail",
                 parameters={
                     "message_text": Parameter(

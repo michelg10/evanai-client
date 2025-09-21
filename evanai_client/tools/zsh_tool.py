@@ -22,6 +22,7 @@ class ZshToolProvider(BaseToolSetProvider):
             Tool(
                 id="zsh",
                 name="Execute ZSH Command",
+                display_name="Execute Terminal Command",
                 description="Execute a command in a zsh shell on the user's actual macOS system. Starts in the user's home directory. Has full access to the user's file system and macOS environment.",
                 parameters={
                     "command": Parameter(

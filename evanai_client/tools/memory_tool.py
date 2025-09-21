@@ -40,6 +40,7 @@ class MemoryToolProvider(BaseToolSetProvider):
             Tool(
                 id="remember_user_fact",
                 name="remember_user_fact",
+                display_name="Remember User Fact",
                 description=(
                     "Store a fact about the user that should be remembered across all conversations. "
                     "Use this tool when:\n"

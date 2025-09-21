@@ -115,6 +115,48 @@ class WebSocketHandler:
             print(f"Failed to send response: {e}")
             return False
 
+    def broadcast_tool_call(self, conversation_id: str, tool_name: str, display_name: Optional[str] = None, parameters: Optional[Dict] = None) -> bool:
+        """Broadcast a tool call notification to the user device.
+
+        Args:
+            conversation_id: The conversation ID
+            tool_name: The name of the tool being called
+            display_name: Human-readable display name for the tool
+            parameters: Optional parameters dict (for future use)
+
+        Returns:
+            True if broadcast successful, False otherwise
+        """
+        broadcast_url = "https://data-transmitter.hemeshchadalavada.workers.dev/broadcast"
+
+        data = {
+            "device": "evanai-client",
+            "format": "tool_call",
+            "recipient": "user_device",
+            "type": "tool_call",
+            "payload": {
+                "conversation_id": conversation_id,
+                "tool_name": tool_name,
+                "display_name": display_name if display_name else tool_name,
+                "timestamp": datetime.now().isoformat()
+            },
+            "timestamp": int(datetime.now().timestamp() * 1000)
+        }
+
+        try:
+            # Disable SSL warnings for testing
+            from urllib3.exceptions import InsecureRequestWarning
+            warnings.filterwarnings('ignore', category=InsecureRequestWarning)
+
+            # Disable SSL verification for testing (not recommended for production)
+            response = requests.post(broadcast_url, json=data, verify=False)
+            response.raise_for_status()
+            print(f"📡 Broadcast tool call: {tool_name}")
+            return True
+        except Exception as e:
+            print(f"Failed to broadcast tool call: {e}")
+            return False
+
     def get_latest_data(self) -> Optional[Dict[str, Any]]:
         latest_url = "https://data-transmitter.hemeshchadalavada.workers.dev/latest"
 

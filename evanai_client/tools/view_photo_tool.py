@@ -16,6 +16,7 @@ class ViewPhotoToolProvider(BaseToolSetProvider):
             Tool(
                 id="view_photo",
                 name="View Photo",
+                display_name="View Photo",
                 description="Loads an image file and displays it to the AI model for visual analysis. The AI can then see and describe the contents of the image. This photo is not shown to the user. Images should be in standard formats (JPEG, PNG, GIF, WebP).",
                 parameters={
                     "photo_path": Parameter(

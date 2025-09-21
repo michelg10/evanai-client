@@ -9,6 +9,22 @@ various features during development.
 # Set to False to disable bash tool loading (currently disabled for development)
 ENABLE_BASH_TOOL = True
 
+# Enable the zsh tool for terminal commands
+# Set to False to disable zsh tool loading
+ENABLE_ZSH_TOOL = False
+
+# Enable the HTML to PNG converter tool
+# Set to False to disable HTML to PNG conversion
+ENABLE_HTML_CONVERTER_TOOL = False
+
+# Enable the model training tool
+# Set to False to disable remote model training functionality
+ENABLE_MODEL_TRAINING_TOOL = True
+
+# Enable the HTML renderer tool
+# Set to False to disable direct HTML to PNG rendering
+ENABLE_HTML_RENDERER_TOOL = False
+
 # Add more feature flags as needed
 # ENABLE_EXPERIMENTAL_FEATURE = False
 # DEBUG_MODE = False
