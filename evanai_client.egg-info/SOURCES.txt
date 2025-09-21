@@ -2,8 +2,11 @@ README.md
 setup.py
 evanai_client/__init__.py
 evanai_client/claude_agent.py
+evanai_client/constants.py
 evanai_client/conversation_manager.py
+evanai_client/debug_server.py
 evanai_client/main.py
+evanai_client/runtime_manager.py
 evanai_client/state_manager.py
 evanai_client/tool_system.py
 evanai_client/websocket_handler.py
@@ -14,4 +17,13 @@ evanai_client.egg-info/entry_points.txt
 evanai_client.egg-info/requires.txt
 evanai_client.egg-info/top_level.txt
 evanai_client/tools/__init__.py
+evanai_client/tools/asset_tool.py
+evanai_client/tools/console_tool.py
+evanai_client/tools/file_system_tool.py
+evanai_client/tools/math_tool.py
+evanai_client/tools/upload_tool.py
+evanai_client/tools/view_photo_tool.py
 evanai_client/tools/weather_tool.py
+evanai_client/tools/linux-desktop-environment/__init__.py
+prompts/__init__.py
+prompts/system_prompt.py

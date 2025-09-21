@@ -6,3 +6,5 @@ venv/
 .idea/
 .vscode/
 evanai_runtime/
+.venv/
+venv312/
