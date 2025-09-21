@@ -42,6 +42,8 @@ RUN apt-get update && apt-get upgrade -y && \
     # Basic tools
     git vim nano less \
     zip unzip tar gzip bzip2 xz-utils jq \
+    # Shells
+    zsh \
     # Development tools
     gcc g++ make cmake build-essential \
     # Python and dependencies

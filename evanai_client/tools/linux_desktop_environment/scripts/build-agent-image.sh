@@ -35,8 +35,8 @@ fi
 
 # Step 1: Copy skills directory to build context
 echo -e "${YELLOW}Step 1: Copying skills directory to build context...${NC}"
-REFERENCE_SKILLS="../../../reference/environment_reference/skills"
-BUILD_SKILLS="./skills"
+REFERENCE_SKILLS="../skills"
+BUILD_SKILLS="../docker/skills"
 
 if [ -d "$REFERENCE_SKILLS" ]; then
     # Remove old skills directory if it exists
@@ -62,7 +62,8 @@ fi
 echo -e "${YELLOW}Step 2: Building Docker image...${NC}"
 echo "  This may take several minutes as it installs many packages..."
 
-# Build with progress output
+# Build with progress output (from docker directory)
+cd ../docker
 if docker build -t claude-agent:latest -f Dockerfile.agent . ; then
     echo -e "${GREEN}  ✓ Docker image built successfully${NC}"
 else

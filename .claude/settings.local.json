@@ -13,7 +13,12 @@
       "Bash(brew install:*)",
       "Bash(git add:*)",
       "Bash(git stash:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git restore:*)",
+      "Bash(git fetch:*)",
+      "Bash(git reset:*)",
+      "Bash(docker images:*)",
+      "Bash(bash:*)"
     ],
     "deny": [],
     "ask": []
