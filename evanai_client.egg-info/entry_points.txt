@@ -1,2 +1,0 @@
-[console_scripts]
-evanai-client = evanai_client.main:cli

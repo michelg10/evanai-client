@@ -1,2 +1,0 @@
-evanai_client
-prompts
