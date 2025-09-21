@@ -5,6 +5,8 @@ Run as a separate process to avoid macOS threading issues.
 """
 import sys
 import signal
+import platform
+import subprocess
 from pathlib import Path
 
 try:
@@ -24,6 +26,17 @@ def create_overlay():
     root.attributes('-fullscreen', True)
     root.attributes('-topmost', True)
     root.configure(bg='#0a0e27')  # Dark blue background
+
+    # Force window to front on macOS
+    root.lift()
+    root.attributes('-topmost', True)
+    root.focus_force()
+    root.update()
+
+    # Additional activation for stubborn window managers
+    root.wm_attributes('-topmost', 1)
+    root.wm_attributes('-topmost', 0)
+    root.wm_attributes('-topmost', 1)  # Toggle to force refresh
 
     # Get screen dimensions
     screen_width = root.winfo_screenwidth()
@@ -89,6 +102,37 @@ def create_overlay():
         root.quit()
 
     signal.signal(signal.SIGTERM, handle_term)
+
+    # macOS-specific: Activate Python app to bring window to front
+    if platform.system() == 'Darwin':
+        try:
+            # Use AppleScript to activate Python and bring to front
+            subprocess.run(['osascript', '-e', 'tell application "Python" to activate'],
+                         capture_output=True, timeout=1)
+        except:
+            pass
+
+    # Final activation before mainloop
+    root.deiconify()
+    root.lift()
+    root.attributes('-topmost', True)
+    root.focus_force()
+    root.update_idletasks()
+    root.update()
+
+    # Schedule another activation attempt after window is fully loaded
+    def ensure_visible():
+        root.lift()
+        root.focus_force()
+        root.attributes('-topmost', True)
+        # Try grab for 100ms to ensure visibility
+        try:
+            root.grab_set_global()
+            root.after(100, root.grab_release)
+        except:
+            pass
+
+    root.after(100, ensure_visible)
 
     # Run the GUI
     root.mainloop()
