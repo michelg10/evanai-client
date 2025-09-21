@@ -1,10 +1,48 @@
 # EvanAI Fullscreen Overlay Feature
 
-A fullscreen overlay that automatically appears when tools take longer than 3 seconds to execute.
+A fullscreen overlay that can be:
+1. **Automatically triggered** when tools take longer than 3 seconds to execute
+2. **Manually controlled** via the overlay tool API (for mobile app integration)
 
 ## Implementation
 
-The overlay runs in a separate subprocess to avoid macOS threading limitations. This allows the GUI to run on its own main thread while being triggered from the tool execution timer.
+The overlay runs in a separate subprocess to avoid macOS threading limitations. This allows the GUI to run on its own main thread while being triggered from the tool execution timer or API calls.
+
+## Mobile App Control
+
+The overlay can be directly controlled from the mobile app using these tools:
+
+### Tools Available
+
+- **show_overlay** - Display fullscreen overlay with custom text
+  - `title` (optional): Main text (default: "EvanAI")
+  - `subtitle` (optional): Subtitle text (default: "is working")
+  - `theme` (optional): Color theme ("default", "dark", "light", "green")
+
+- **hide_overlay** - Hide the overlay if it's showing
+
+- **update_overlay** - Update content while overlay is showing
+  - Same parameters as show_overlay
+
+### Example API Calls
+
+```python
+# Show overlay from mobile app
+{
+    "tool": "show_overlay",
+    "parameters": {
+        "title": "Processing",
+        "subtitle": "your request",
+        "theme": "dark"
+    }
+}
+
+# Hide overlay
+{
+    "tool": "hide_overlay",
+    "parameters": {}
+}
+```
 
 ## Configuration
 
