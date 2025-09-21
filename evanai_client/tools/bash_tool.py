@@ -15,9 +15,9 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 
-# Add linux-desktop-environment to path for imports
+# Add linux_desktop_environment to path for imports
 tool_dir = Path(__file__).parent
-linux_env_dir = tool_dir / "linux-desktop-environment"
+linux_env_dir = tool_dir / "linux_desktop_environment"
 if str(linux_env_dir) not in sys.path:
     sys.path.insert(0, str(linux_env_dir))
 

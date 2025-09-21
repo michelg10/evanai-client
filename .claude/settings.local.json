@@ -5,7 +5,15 @@
       "Bash(source:*)",
       "Bash(mkdir:*)",
       "Bash(mv:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(pip install:*)",
+      "Bash(chmod:*)",
+      "Bash(brew install:*)",
+      "Bash(git add:*)",
+      "Bash(git stash:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

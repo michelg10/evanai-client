@@ -2,6 +2,21 @@ from typing import Dict, List, Any, Optional, Tuple, Protocol
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
+import threading
+import time
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+# Check if overlay dependencies are available
+try:
+    import tkinter as tk
+    from PIL import Image, ImageTk
+    OVERLAY_AVAILABLE = True
+except ImportError:
+    OVERLAY_AVAILABLE = False
+    # Silently skip if tkinter/PIL not available
 
 
 class ParameterType(Enum):
@@ -199,6 +214,11 @@ class ToolManager:
         self.tools: Dict[str, Tool] = {}
         self.providers: Dict[str, ToolSetProvider] = {}
         self.provider_states: Dict[str, Dict[str, Any]] = {}
+        self.overlay_shown = False
+        self.overlay_process = None
+        self.overlay_lock = threading.Lock()
+        self.last_tool_end_time = 0
+        self.overlay_grace_period = 2.0  # Keep overlay alive for 2 seconds between tools
 
     def register_provider(self, provider: ToolSetProvider):
         """Register a tool provider and its tools."""
@@ -266,13 +286,43 @@ class ToolManager:
         # Always add conversation_id to the state
         provider_conversations[conversation_id]['_conversation_id'] = conversation_id
 
-        # Call the tool
-        result, error = provider.call_tool(
-            tool_id,
-            parameters,
-            provider_conversations[conversation_id],
-            provider_global
-        )
+        # Start overlay timer (shows after 3 seconds if tool still running)
+        # Skip overlay for certain quick tools or if disabled
+        show_overlay = os.environ.get('EVANAI_SHOW_OVERLAY', 'true').lower() == 'true'
+        overlay_timer = None
+
+        current_time = time.time()
+        # Check if we're within grace period from last tool
+        time_since_last_tool = current_time - self.last_tool_end_time
+        in_grace_period = time_since_last_tool < self.overlay_grace_period
+
+        if show_overlay and OVERLAY_AVAILABLE and tool_id not in ['list_files', 'get_weather']:
+            if in_grace_period and self.overlay_shown:
+                overlay_timer = None  # Don't start a new timer, keep existing overlay
+            else:
+                overlay_timer = threading.Timer(3.0, self._show_overlay)
+                overlay_timer.start()
+
+        try:
+            # Call the tool
+            result, error = provider.call_tool(
+                tool_id,
+                parameters,
+                provider_conversations[conversation_id],
+                provider_global
+            )
+        finally:
+            # Cancel overlay timer if still pending
+            if overlay_timer:
+                overlay_timer.cancel()
+
+            # Record tool end time
+            self.last_tool_end_time = time.time()
+
+            # Only hide overlay if we were managing it for this tool
+            # (don't hide if it's from a previous tool in grace period)
+            if not in_grace_period or not self.overlay_shown:
+                self._hide_overlay()
 
         if error:
             return None, error
@@ -298,3 +348,45 @@ class ToolManager:
         for provider_name, provider_state in self.provider_states.items():
             provider_state['global'].clear()
             provider_state['conversations'].clear()
+
+    def _show_overlay(self):
+        """Show fullscreen overlay with EvanAI working message."""
+        with self.overlay_lock:
+            if self.overlay_shown or self.overlay_process:
+                return
+
+            if not OVERLAY_AVAILABLE:
+                return
+
+            try:
+                # Launch overlay in a separate process to avoid macOS threading issues
+                overlay_script = Path(__file__).parent / 'overlay_process.py'
+                if overlay_script.exists():
+                    # Run the overlay as a subprocess
+                    self.overlay_process = subprocess.Popen(
+                        [sys.executable, str(overlay_script)],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        start_new_session=True  # Detach from parent process group
+                    )
+                    self.overlay_shown = True
+            except Exception as e:
+                pass
+
+    def _hide_overlay(self):
+        """Hide the fullscreen overlay if it's shown."""
+        with self.overlay_lock:
+            if self.overlay_process:
+                try:
+                    # Terminate the overlay process
+                    self.overlay_process.terminate()
+                    # Give it a moment to close gracefully
+                    try:
+                        self.overlay_process.wait(timeout=0.5)
+                    except subprocess.TimeoutExpired:
+                        # Force kill if it doesn't terminate
+                        self.overlay_process.kill()
+                except Exception as e:
+                    pass
+                self.overlay_process = None
+            self.overlay_shown = False

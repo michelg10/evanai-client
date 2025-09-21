@@ -11,6 +11,9 @@ requests==2.32.5  # Updated to match linux-desktop-environment version
 certifi>=2023.0.0
 urllib3==2.3.0  # Updated to match linux-desktop-environment version
 
+# Image handling for overlay display
+Pillow>=10.0.0
+
 # Bash tool dependencies (for Docker container management)
 docker>=7.0.0
 
