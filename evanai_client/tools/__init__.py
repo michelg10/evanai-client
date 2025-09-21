@@ -4,34 +4,25 @@ EvanAI Tools Package
 Collection of tools that can be used by Claude agents.
 """
 
-from .weather_tool import WeatherToolProvider
 from .file_system_tool import FileSystemToolProvider
 from .upload_tool import UploadToolProvider
-from .asset_tool import AssetToolProvider
 from .view_photo_tool import ViewPhotoToolProvider
-from .write_tool import WriteToolProvider
 from .bash_tool import BashToolProvider
 from .zsh_tool import ZshToolProvider
 
 __all__ = [
-    'WeatherToolProvider',
     'FileSystemToolProvider',
     'UploadToolProvider',
-    'AssetToolProvider',
     'ViewPhotoToolProvider',
-    'WriteToolProvider',
     'BashToolProvider',
     'ZshToolProvider'
 ]
 
 # Tool registry for easy access
 AVAILABLE_TOOLS = {
-    'weather': WeatherToolProvider,
     'file_system': FileSystemToolProvider,
     'upload': UploadToolProvider,
-    'asset': AssetToolProvider,
     'view_photo': ViewPhotoToolProvider,
-    'write': WriteToolProvider,
     'bash': BashToolProvider,
     'zsh': ZshToolProvider
 }

@@ -108,7 +108,10 @@ class DebugServer:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found. Please set it in your environment or .env file")
 
-        self.claude_agent = ClaudeAgent(api_key)
+        # Initialize Claude agent with workspace for built-in tools
+        workspace_dir = os.path.join(self.runtime_manager.runtime_dir, 'workspace')
+        os.makedirs(workspace_dir, exist_ok=True)
+        self.claude_agent = ClaudeAgent(api_key, workspace_dir=workspace_dir)
 
         # Mock websocket handler for debug mode
         self.websocket_handler = MockWebSocketHandler()

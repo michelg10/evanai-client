@@ -59,7 +59,7 @@ class ConversationManager:
     def __init__(self, runtime_dir: str = "./evanai_runtime"):
         self.manager = LazyAgentManager(
             runtime_dir=runtime_dir,
-            default_idle_timeout=300,  # 5 minutes
+            default_idle_timeout=0,  # 0 = no timeout
             max_agents=50
         )
         self.conversations: Dict[str, Dict[str, Any]] = {}

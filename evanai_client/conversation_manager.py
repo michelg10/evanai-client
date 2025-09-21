@@ -111,12 +111,13 @@ class ConversationManager:
                     print(f"Tool result: {result}")
                 return result, error
 
-            # Process the prompt with Claude
+            # Process the prompt with Claude - enable all built-in tools by default
             response, new_history = self.claude_agent.process_prompt(
                 prompt,
                 conversation.get_history(),
                 tools,
-                tool_callback
+                tool_callback,
+                enable_builtin_tools=['web_search', 'web_fetch', 'text_editor']  # Enable ALL built-in tools
             )
 
             # Update conversation history

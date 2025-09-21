@@ -53,7 +53,7 @@ yarn-error.log*
 
 # Local data directories (will be mounted as volumes)
 workspace/
-skills/
+# skills/  # Commented out to allow skills to be copied into image
 knowledge/
 user-data/
 notebooks/

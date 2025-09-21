@@ -59,7 +59,7 @@ class BashToolProvider(BaseToolSetProvider):
         self,
         websocket_handler=None,  # Required by EvanAI tool system
         runtime_dir: Optional[str] = None,
-        idle_timeout: int = 300,
+        idle_timeout: int = 0,  # 0 = no timeout, container runs forever
         memory_limit: str = "2g",
         cpu_limit: float = 2.0,
         image: str = "claude-agent:latest",
@@ -72,7 +72,7 @@ class BashToolProvider(BaseToolSetProvider):
         Args:
             websocket_handler: WebSocket handler for communication (required by tool system)
             runtime_dir: Base directory for agent runtime data
-            idle_timeout: Seconds before idle container stops (default 5 min)
+            idle_timeout: Seconds before idle container stops (0 = no timeout)
             memory_limit: Memory limit for containers
             cpu_limit: CPU limit for containers
             image: Docker image to use for containers
@@ -128,7 +128,7 @@ class BashToolProvider(BaseToolSetProvider):
                     "timeout": Parameter(
                         name="timeout",
                         type=ParameterType.INTEGER,
-                        description="Command timeout in seconds (default: 120)",
+                        description="Command timeout in seconds (default: 0 = no timeout)",
                         required=False,
                         default=120
                     ),
@@ -272,7 +272,7 @@ class BashToolProvider(BaseToolSetProvider):
         if not command:
             return None, "Command parameter is required"
 
-        timeout = parameters.get("timeout", 120)
+        timeout = parameters.get("timeout", 120)  # Default 2 minute command timeout
         working_dir = parameters.get("working_dir", "/mnt")
 
         # Track if this is the first command
@@ -462,7 +462,7 @@ if __name__ == "__main__":
     # Create tool provider
     bash_tool = BashToolProvider(
         runtime_dir="./evanai_runtime",
-        idle_timeout=60  # 1 minute for demo
+        idle_timeout=0  # No timeout
     )
 
     # Initialize

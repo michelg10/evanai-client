@@ -62,8 +62,8 @@ The EvanAI Client follows a modular architecture with clear separation of concer
                      │
           ┌──────────┼──────────┐
           ↓          ↓          ↓
-    [Weather]   [FileSystem]  [Upload]
-    [Math]      [Asset]       [Custom...]
+    [FileSystem]  [Upload]     [ViewPhoto]
+    [Write]       [Bash]       [Zsh]
                 Tools
 ```
 
@@ -127,7 +127,6 @@ evanai-client run --model claude-3-opus-20240229  # Use different Claude model
 | `runtime-info` | Display runtime directory structure | `evanai-client runtime-info` |
 | `reset-persistence` | Reset all persistence data | `evanai-client reset-persistence --force` |
 | `debug` | Launch web-based debug interface | `evanai-client debug --port 8069` |
-| `test-weather` | Test the weather tool locally | `evanai-client test-weather "London"` |
 | `test-prompt` | Test prompt processing locally | `evanai-client test-prompt "Hello!"` |
 
 ### Command Options
@@ -159,7 +158,7 @@ evanai-client run --runtime-dir ./dev_runtime --model claude-3-haiku-20240307
 evanai-client runtime-info
 
 # Test a complex prompt with tools
-evanai-client test-prompt "What's the weather in Paris and calculate 15% tip on $85.50"
+evanai-client test-prompt "List files in the current directory and calculate 15% tip on $85.50"
 
 # Clean up after testing
 evanai-client reset-persistence --force
@@ -832,7 +831,7 @@ memory_path = Path(working_dir) / "agent_memory" / "shared.json"
     "recipient": "agent",
     "type": "new_prompt",
     "conversation_id": "conv_123",
-    "prompt": "What's the weather?",
+    "prompt": "List files in the current directory",
     "metadata": {
         "user_id": "user_456",
         "timestamp": "2024-01-20T10:30:00Z"
@@ -850,9 +849,9 @@ memory_path = Path(working_dir) / "agent_memory" / "shared.json"
     "type": "agent_response",
     "payload": {
         "conversation_id": "conv_123",
-        "prompt": "The weather is sunny with a temperature of 72°F.",
+        "prompt": "Here are the files in the current directory: main.py, README.md, requirements.txt",
         "metadata": {
-            "tools_used": ["get_weather"],
+            "tools_used": ["file_system"],
             "processing_time": 1.23
         }
     }
@@ -1089,7 +1088,7 @@ The debug interface provides:
 4. **Send test prompts** that trigger your tool:
    ```
    Example prompts:
-   - "Get the weather in Paris"
+   - "List files in a directory"
    - "Calculate 15% tip on $85.50"
    - "List files in the current directory"
    ```
@@ -1118,7 +1117,7 @@ The debug interface provides:
 $ evanai-client debug
 Initializing EvanAI Client...
 Loading tools...
-  ✓ Loaded WeatherToolProvider from weather_tool.py
+  ✓ Loaded FileSystemToolProvider from file_system_tool.py
   ✓ Loaded MathToolProvider from math_tool.py
   ✓ Loaded FileSystemToolProvider from file_system_tool.py
 Loaded 6 tools total
@@ -1129,14 +1128,14 @@ Debug server running on http://localhost:8069
 // Browser console (http://localhost:8069)
 // Send a test prompt
 {
-  "prompt": "What's the weather in Tokyo and calculate 20% of 150",
+  "prompt": "List files in the home directory and calculate 20% of 150",
   "conversation_id": "test-001"
 }
 
 // Response
 {
-  "response": "The weather in Tokyo is sunny with 22°C. 20% of 150 is 30.",
-  "tools_used": ["get_weather", "calculate_percentage"],
+  "response": "Listed files in the home directory. 20% of 150 is 30.",
+  "tools_used": ["file_system", "calculate_percentage"],
   "processing_time": 1.34
 }
 ```
@@ -1205,7 +1204,6 @@ pytest tests/test_tools.py
 pytest --cov=evanai_client --cov-report=html
 
 # Test individual tools
-evanai-client test-weather "London, UK"
 evanai-client test-prompt "Calculate 15% tip on $50"
 ```
 
@@ -1423,7 +1421,6 @@ class ProductionToolProvider(BaseToolSetProvider):
 ### Example Tools Repository
 
 Find more example tools and templates at:
-- Weather API integration
 - Database connectors
 - File processors
 - Web scrapers

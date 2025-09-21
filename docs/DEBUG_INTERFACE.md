@@ -103,8 +103,6 @@ The interface shows:
 "List all files in the conversation_data folder"
 "Create a test file called hello.txt with some content"
 
-# Weather Tool
-"What's the weather in San Francisco?"
 
 # Math Tools
 "Calculate 25 * 4 + 10"

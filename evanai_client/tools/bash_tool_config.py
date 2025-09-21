@@ -16,7 +16,7 @@ class BashToolConfig:
     DEFAULT_CONFIG = {
         "runtime_dir": "./evanai_runtime",
         "docker_image": "claude-agent:latest",
-        "idle_timeout": 300,  # 5 minutes
+        "idle_timeout": 0,  # 0 = no timeout
         "memory_limit": "2g",
         "cpu_limit": 2.0,
         "max_agents": 100,

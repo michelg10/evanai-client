@@ -126,12 +126,13 @@ RUN mkdir -p \
     /home/agent/.local/bin \
     /home/agent/.npm \
     /home/agent/.npm-global/bin \
-    /mnt/skills/public/docx \
-    /mnt/skills/public/pdf \
-    /mnt/skills/public/pptx \
-    /mnt/skills/public/xlsx \
+    /mnt/skills \
     /mnt/user-data/uploads \
     /mnt/user-data/outputs
+
+# Copy skills directory (must exist in build context)
+# Run: cp -r ../../../reference/environment_reference/skills . before building
+COPY skills/ /mnt/skills/
 
 # Configure ImageMagick for PDF processing
 RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \

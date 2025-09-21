@@ -45,7 +45,7 @@ class LazyAgent:
         manager: 'LazyAgentManager',
         memory_limit: str = "2g",
         cpu_limit: float = 2.0,
-        idle_timeout: int = 300  # 5 minutes default
+        idle_timeout: int = 0  # 0 = no timeout
     ):
         self.agent_id = agent_id
         self.manager = manager
@@ -77,7 +77,7 @@ class LazyAgent:
 
             if self.state == AgentState.STARTING:
                 # Wait for container to be ready
-                timeout = 30
+                timeout = 300  # Increase container start timeout to 5 minutes
                 start = time.time()
                 while self.state == AgentState.STARTING and time.time() - start < timeout:
                     time.sleep(0.1)
@@ -139,7 +139,7 @@ class LazyAgent:
                 self.container = self.manager.docker.containers.run(**config)
 
                 # Wait for container to be ready
-                timeout = 10
+                timeout = 60  # Increase wait timeout to 1 minute
                 start = time.time()
                 while time.time() - start < timeout:
                     self.container.reload()
@@ -216,7 +216,7 @@ class LazyAgent:
                 self.cleanup_timer.cancel()
 
             # Start new timer
-            if self.idle_timeout > 0:
+            if self.idle_timeout > 0:  # Skip timer if no timeout
                 self.cleanup_timer = threading.Timer(
                     self.idle_timeout,
                     self._idle_cleanup
@@ -242,7 +242,7 @@ class LazyAgent:
             if self.container and self.state == AgentState.RUNNING:
                 try:
                     self.state = AgentState.STOPPING
-                    self.container.stop(timeout=10)
+                    self.container.stop(timeout=30)  # Give more time for graceful shutdown
                     self.container.remove()
                     self.container = None
                     self.state = AgentState.STOPPED
@@ -310,7 +310,7 @@ class LazyAgentManager:
         self,
         runtime_dir: str = "./evanai_runtime",
         image: str = "claude-agent:latest",
-        default_idle_timeout: int = 300,  # 5 minutes
+        default_idle_timeout: int = 0,  # 0 = no timeout
         max_agents: int = 100
     ):
         self.runtime_dir = Path(runtime_dir).absolute()
@@ -505,7 +505,7 @@ class ConversationAgent:
         self,
         conversation_id: Optional[str] = None,
         runtime_dir: str = "./evanai_runtime",
-        idle_timeout: int = 300
+        idle_timeout: int = 0  # 0 = no timeout
     ):
         """
         Initialize agent for a conversation.

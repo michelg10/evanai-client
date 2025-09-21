@@ -155,7 +155,7 @@ class ZshToolProvider(BaseToolSetProvider):
         """Execute a command in the persistent zsh session."""
 
         command = parameters["command"]
-        timeout = parameters.get("timeout", 3.0)
+        timeout = parameters.get("timeout", 30.0)  # Default 30 second command timeout
 
         # Use simple mode for now until persistent session issue is fixed
         # TODO: Fix persistent session output collection
@@ -190,7 +190,8 @@ class ZshToolProvider(BaseToolSetProvider):
             found_marker = False
             while True:
                 elapsed = time.time() - start_time
-                if elapsed > timeout:
+                # Only check timeout if timeout > 0 (0 = no timeout)
+                if timeout > 0 and elapsed > timeout:
                     break
 
                 try:
@@ -212,7 +213,8 @@ class ZshToolProvider(BaseToolSetProvider):
 
                 except queue.Empty:
                     # If we've been waiting for more than half the timeout with no output, break
-                    if elapsed > timeout / 2 and not stdout_lines and not stderr_lines:
+                    # Only apply if timeout > 0
+                    if timeout > 0 and elapsed > timeout / 2 and not stdout_lines and not stderr_lines:
                         break
                     continue
 
@@ -241,12 +243,18 @@ class ZshToolProvider(BaseToolSetProvider):
         """Simple non-persistent command execution as fallback."""
         try:
             # Run command directly with subprocess
+            # If timeout is 0, don't set timeout (run indefinitely)
+            kwargs = {
+                'capture_output': True,
+                'text': True,
+                'cwd': os.path.expanduser("~")
+            }
+            if timeout > 0:
+                kwargs['timeout'] = timeout
+
             result = subprocess.run(
                 ['/bin/zsh', '-c', command],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=os.path.expanduser("~")
+                **kwargs
             )
 
             return {

@@ -18,10 +18,11 @@ from .constants import (
     BACKOFF_MULTIPLIER,
     FALLBACK_RETRY_COUNT
 )
+from .tools.builtin.api_integration import BuiltinToolsIntegration
 
 
 class ClaudeAgent:
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, workspace_dir: Optional[str] = None):
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY not found. Set it as an environment variable or pass it to the constructor.")
@@ -34,6 +35,10 @@ class ClaudeAgent:
 
         # Track if we're using backup model
         self.using_backup_model = False
+
+        # Initialize built-in tools integration
+        self.builtin_tools = BuiltinToolsIntegration(workspace_dir)
+        self.builtin_tools_enabled = []
 
         # Retry configuration (can be overridden by environment variables)
         self.max_backoff = float(os.environ.get("CLAUDE_MAX_BACKOFF", MAX_BACKOFF_SECONDS))
@@ -51,9 +56,15 @@ class ClaudeAgent:
             print(f"Error loading system prompt: {e}")
             return ""
 
-    def _make_api_call_with_retry(self, messages, tools):
+    def _make_api_call_with_retry(self, messages, tools, extra_headers=None):
         """Make API call with exponential backoff retry logic. Retries indefinitely.
-        This includes the entire stream processing, not just stream creation."""
+        This includes the entire stream processing, not just stream creation.
+
+        Args:
+            messages: Conversation messages
+            tools: List of tools (both custom and built-in)
+            extra_headers: Additional headers for the API request
+        """
         retry_count = 0
         backoff = self.initial_backoff
         current_model = self.model
@@ -91,13 +102,20 @@ class ClaudeAgent:
                 tool_block = None
 
                 # Make the API call and process stream
-                with self.client.messages.stream(
-                    model=current_model,
-                    messages=messages,
-                    max_tokens=self.max_tokens,
-                    tools=tools if tools else None,
-                    system=self.system_prompt if self.system_prompt else None
-                ) as stream:
+                stream_kwargs = {
+                    'model': current_model,
+                    'messages': messages,
+                    'max_tokens': self.max_tokens,
+                    'system': self.system_prompt if self.system_prompt else None
+                }
+
+                if tools:
+                    stream_kwargs['tools'] = tools
+
+                if extra_headers:
+                    stream_kwargs['extra_headers'] = extra_headers
+
+                with self.client.messages.stream(**stream_kwargs) as stream:
                     # Process streaming events manually to handle both text and tool use
                     for event in stream:
                         if not hasattr(event, 'type'):
@@ -118,6 +136,10 @@ class ClaudeAgent:
                                         input={}
                                     )
                                     current_tool_input = ""
+                                elif event.content_block.type in ('server_tool_use', 'web_fetch_tool_result', 'web_search_tool_result'):
+                                    # Handle server-side tool results
+                                    current_block = 'server_tool'
+                                    content_blocks.append(event.content_block)
 
                         # Handle content block delta
                         elif event.type == 'content_block_delta':
@@ -270,13 +292,38 @@ class ClaudeAgent:
         prompt: str,
         conversation_history: List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
-        tool_callback: Optional[callable] = None
+        tool_callback: Optional[callable] = None,
+        enable_builtin_tools: Optional[List[str]] = None
     ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Process a prompt with support for multiple tool calls in a single response."""
+        """Process a prompt with support for multiple tool calls in a single response.
+
+        Args:
+            prompt: User prompt
+            conversation_history: Previous messages
+            tools: Custom tools list
+            tool_callback: Callback for custom tool execution
+            enable_builtin_tools: List of built-in tools to enable ('web_fetch', 'web_search', 'text_editor')
+        """
         messages = conversation_history + [{"role": "user", "content": prompt}]
         new_history = messages.copy()
         final_response = ""
         iteration = 0
+
+        # Configure built-in tools if requested
+        extra_headers = None
+        all_tools = tools.copy() if tools else []
+
+        if enable_builtin_tools:
+            # Get headers for built-in tools
+            extra_headers = self.builtin_tools.get_api_headers(enable_builtin_tools)
+
+            # Add built-in tool configurations
+            builtin_configs = self.builtin_tools.get_tools_config(
+                enable_builtin_tools,
+                self.model
+            )
+            all_tools.extend(builtin_configs)
+            self.builtin_tools_enabled = enable_builtin_tools
 
         try:
             while True:
@@ -287,7 +334,7 @@ class ClaudeAgent:
                     print(f"Note: Processing iteration {iteration} of tool calls...")
 
                 # Make API call with retry logic - this now handles the entire stream processing
-                content_blocks = self._make_api_call_with_retry(new_history, tools)
+                content_blocks = self._make_api_call_with_retry(new_history, all_tools, extra_headers)
 
                 # Build and append assistant message
                 assistant_message = self._build_assistant_message(content_blocks)
@@ -298,6 +345,20 @@ class ClaudeAgent:
                     content_blocks,
                     tool_callback
                 )
+
+                # Handle built-in text editor tool responses if needed
+                for i, block in enumerate(content_blocks):
+                    if isinstance(block, ToolUseBlock) and block.name == 'str_replace_based_edit_tool':
+                        # This is a client-side built-in tool that needs handling
+                        result = self.builtin_tools.handle_tool_use({
+                            'type': 'tool_use',
+                            'id': block.id,
+                            'name': block.name,
+                            'input': block.input
+                        })
+                        # Add to tool results if not already processed
+                        if not any(r.get('tool_use_id') == block.id for r in tool_results):
+                            tool_results.append(result)
 
                 # Update final response with any text from this iteration
                 if text_response:

@@ -44,7 +44,10 @@ class AgentClient:
             print("  export ANTHROPIC_API_KEY='your-key-here'")
             sys.exit(1)
 
-        self.claude_agent = ClaudeAgent(api_key)
+        # Initialize Claude agent with workspace for built-in tools
+        workspace_dir = os.path.join(self.runtime_manager.runtime_dir, 'workspace')
+        os.makedirs(workspace_dir, exist_ok=True)
+        self.claude_agent = ClaudeAgent(api_key, workspace_dir=workspace_dir)
 
         self.websocket_handler = WebSocketHandler()
 
@@ -220,33 +223,6 @@ def reset_persistence(runtime_dir, force):
     print(f"{Fore.YELLOW}Resetting all persistence data...{Style.RESET_ALL}")
     runtime_manager.reset_all()
     print(f"{Fore.GREEN}✓ All persistence data has been reset{Style.RESET_ALL}")
-
-
-@cli.command()
-@click.option('--location', required=True, help='Location to get weather for')
-def test_weather(location):
-    load_dotenv()
-
-    from .tools.weather_tool import WeatherToolProvider
-
-    provider = WeatherToolProvider()
-    tools, global_state, conv_state = provider.init()
-
-    print(f"\n{Fore.CYAN}Testing weather tool for {location}{Style.RESET_ALL}")
-
-    result, error = provider.call_tool(
-        "get_weather",
-        {"location": location},
-        {},
-        global_state
-    )
-
-    if error:
-        print(f"{Fore.RED}Error: {error}{Style.RESET_ALL}")
-    else:
-        print(f"{Fore.GREEN}Weather data:{Style.RESET_ALL}")
-        for key, value in result.items():
-            print(f"  {key}: {value}")
 
 
 @cli.command()
