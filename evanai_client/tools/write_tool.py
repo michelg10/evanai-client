@@ -38,11 +38,7 @@ class WriteToolProvider(BaseToolSetProvider):
                         required=True
                     )
                 },
-                returns=Parameter(
-                    name="file_path",
-                    type=ParameterType.STRING,
-                    description="The path of the created file"
-                )
+                returns=None  # No return value
             )
         ]
 
@@ -98,20 +94,16 @@ class WriteToolProvider(BaseToolSetProvider):
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)
 
-            # Return the file path as string
-            result = {
-                "file_path": str(path.absolute())
-            }
+            # Broadcast the file creation event if websocket handler is available
+            if self.websocket_handler:
+                self.websocket_handler.broadcast({
+                    "type": "file_created",
+                    "file_path": str(path.absolute()),
+                    "size": len(content)
+                })
 
-            # # Broadcast the file creation event if websocket handler is available
-            # if self.websocket_handler:
-            #     self.websocket_handler.broadcast({
-            #         "type": "file_created",
-            #         "file_path": str(path.absolute()),
-            #         "size": len(content)
-            #     })
-
-            return result, None
+            # Return empty dict and None for error (no data to return)
+            return {}, None
 
         except PermissionError as e:
             return None, f"Permission denied when writing to {file_path}: {str(e)}"
