@@ -7,7 +7,7 @@ accessed and referenced in all future conversations.
 
 import os
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 from datetime import datetime
 
 from ..tool_system import BaseToolSetProvider, Tool, Parameter, ParameterType
@@ -83,13 +83,13 @@ class MemoryToolProvider(BaseToolSetProvider):
         tool_parameters: Dict[str, Any],
         per_conversation_state: Dict[str, Any],
         global_state: Dict[str, Any]
-    ) -> Tuple[Any, Dict[str, Any], Dict[str, Any]]:
+    ) -> Tuple[Any, Optional[str]]:
         """Execute a memory tool."""
         if tool_id == "remember_user_fact":
             fact = tool_parameters.get("fact", "").strip()
 
             if not fact:
-                return {"error": "No fact provided"}, per_conversation_state, global_state
+                return None, "No fact provided"
 
             try:
                 # Add timestamp to the fact for tracking
@@ -107,14 +107,12 @@ class MemoryToolProvider(BaseToolSetProvider):
                     "success": True,
                     "message": f"I've remembered that fact about you. I now know {total_facts} facts about you.",
                     "fact": fact
-                }, per_conversation_state, global_state
+                }, None
 
             except Exception as e:
-                return {
-                    "error": f"Failed to save fact: {str(e)}"
-                }, per_conversation_state, global_state
+                return None, f"Failed to save fact: {str(e)}"
 
-        return {"error": f"Unknown tool: {tool_id}"}, per_conversation_state, global_state
+        return None, f"Unknown tool: {tool_id}"
 
     def get_user_facts(self) -> List[str]:
         """Get all stored user facts."""

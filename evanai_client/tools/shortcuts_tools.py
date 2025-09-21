@@ -155,20 +155,19 @@ class ShortcutsToolProvider(BaseToolSetProvider):
         tool_parameters: Dict[str, Any],
         per_conversation_state: Dict[str, Any],
         global_state: Dict[str, Any]
-    ) -> Tuple[Any, Dict[str, Any], Dict[str, Any]]:
+    ) -> Tuple[Any, Optional[str]]:
         """Execute a shortcuts tool."""
         try:
             if tool_id == "get_calendar_events":
                 result = self._get_calendar_events(tool_parameters)
+                return result, None
             elif tool_id == "send_email":
                 result = self._send_email(tool_parameters)
+                return result, None
             else:
-                result = {"error": f"Unknown tool: {tool_id}"}
+                return None, f"Unknown tool: {tool_id}"
         except Exception as e:
-            result = {"error": str(e)}
-
-        # Return result, unchanged per_conversation_state, unchanged global_state
-        return result, per_conversation_state, global_state
+            return None, str(e)
 
     def _get_calendar_events(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute the get_calendar_events shortcut."""
