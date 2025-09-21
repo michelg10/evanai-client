@@ -70,26 +70,54 @@ def create_overlay():
             except Exception as e:
                 print(f"Error loading icon: {e}", file=sys.stderr)
 
-    # If no icon, show text
+    # Create main text label with nice typography
     if not icon_loaded:
-        label = tk.Label(
-            root,
-            text="EvanAI is working...",
-            font=('SF Pro Display', 72, 'bold'),
-            fg='white',
+        # Create a frame for centering content
+        center_frame = tk.Frame(root, bg='#0a0e27')
+        center_frame.pack(expand=True)
+
+        # Main "EvanAI" text with larger, bold font
+        evan_label = tk.Label(
+            center_frame,
+            text="EvanAI",
+            font=('SF Pro Display', 96, 'bold'),
+            fg='#4A90E2',  # Nice blue color
             bg='#0a0e27'
         )
-        label.pack(expand=True)
+        evan_label.pack()
 
-    # Add subtitle
+        # "is working..." text with animated dots
+        working_label = tk.Label(
+            center_frame,
+            text="is working...",
+            font=('SF Pro Display', 48),
+            fg='#B0C4DE',  # Lighter blue-gray
+            bg='#0a0e27'
+        )
+        working_label.pack(pady=(10, 0))
+
+        # Animation function for dots
+        dot_count = 0
+        def animate_dots():
+            nonlocal dot_count
+            dot_count = (dot_count % 3) + 1
+            dots = "." * dot_count
+            spaces = " " * (3 - dot_count)  # Keep consistent width
+            working_label.config(text=f"is working{dots}{spaces}")
+            root.after(600, animate_dots)  # Update every 600ms
+
+        # Start the animation
+        animate_dots()
+
+    # Add subtitle with better positioning
     subtitle = tk.Label(
         root,
-        text="Please wait • Press ESC to dismiss",
-        font=('SF Pro Display', 24),
-        fg='#7a8299',
+        text="Press ESC or click to dismiss",
+        font=('SF Pro Display', 20),
+        fg='#6B7280',  # Subtle gray
         bg='#0a0e27'
     )
-    subtitle.pack(pady=(0, 100))
+    subtitle.pack(side='bottom', pady=50)
 
     # ESC to close
     root.bind('<Escape>', lambda e: root.quit())
