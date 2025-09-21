@@ -50,7 +50,7 @@ class ClaudeCodeAnalyzerProvider(BaseToolSetProvider):
                     "path": Parameter(
                         name="path",
                         type=ParameterType.STRING,
-                        description="Path to the directory containing the codebase to analyze",
+                        description="Path to the directory containing the codebase to analyze. This path should be a path on the user's **host machine** where the code resides.",
                         required=True
                     ),
                     "prompt": Parameter(

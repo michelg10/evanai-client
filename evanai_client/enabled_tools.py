@@ -11,12 +11,12 @@ from .tools.upload_tool import UploadToolProvider
 from .tools.memory_tool import MemoryToolProvider
 
 # Shell and command execution
-# from .tools.bash_tool import BashToolProvider
+from .tools.bash_tool import BashToolProvider
 # from .tools.zsh_tool import ZshToolProvider
 from .tools.container_zsh_tool import ContainerZshToolProvider
 
 # Media and conversion tools
-# from .tools.view_photo_tool import ViewPhotoToolProvider
+from .tools.view_photo_tool import ViewPhotoToolProvider
 
 # Development and analysis tools
 from .tools.claude_code_analyzer import ClaudeCodeAnalyzerProvider
@@ -34,18 +34,18 @@ ENABLED_TOOLS = [
     MemoryToolProvider,          # Remember facts about users
 
     # Shell and command execution
-    # BashToolProvider,           # Linux container bash execution
+    BashToolProvider,           # Linux container bash execution
     # ZshToolProvider,            # ZSH shell execution
     ContainerZshToolProvider,    # Container-based ZSH execution
 
     # Media and conversion tools
-    # ViewPhotoToolProvider,      # View and analyze images
+    ViewPhotoToolProvider,      # View and analyze images
 
     # Development and analysis tools
     ClaudeCodeAnalyzerProvider,  # Analyze code with Claude
-    SelfAnalysisToolProvider,    # Self-analysis and debugging
+    # SelfAnalysisToolProvider,    # Self-analysis and debugging
 
     # System integration
     ShortcutsToolProvider,       # macOS Shortcuts integration
-    OverlayToolProvider,         # Fullscreen overlay display
+    # OverlayToolProvider,         # Fullscreen overlay display
 ]

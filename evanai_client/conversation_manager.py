@@ -100,6 +100,13 @@ class ConversationManager:
             def tool_callback(tool_id: str, parameters: Dict[str, Any]) -> tuple:
                 print(f"Calling tool: {tool_id} with parameters: {parameters}")
 
+                # List of known built-in tools that are handled by claude_agent
+                BUILTIN_TOOLS = {
+                    'str_replace_based_edit_tool',
+                    'web_fetch',
+                    'web_search'
+                }
+
                 # Get the tool's display name
                 display_name = tool_id  # Default to tool_id
                 if tool_id in self.tool_manager.tools:
@@ -110,6 +117,12 @@ class ConversationManager:
                     self.websocket_handler.broadcast_tool_call(conversation_id, tool_id, display_name, parameters)
                 except Exception as e:
                     print(f"Failed to broadcast tool call: {e}")
+
+                # Check if this is a built-in tool - these are handled by claude_agent
+                if tool_id in BUILTIN_TOOLS:
+                    print(f"Built-in tool {tool_id} will be handled by claude_agent")
+                    # Return success for built-in tools (actual execution happens in claude_agent.py)
+                    return {"status": "handled_by_builtin"}, None
 
                 result, error = self.tool_manager.call_tool(
                     tool_id,
