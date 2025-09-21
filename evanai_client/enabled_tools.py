@@ -34,7 +34,7 @@ ENABLED_TOOLS = [
     MemoryToolProvider,          # Remember facts about users
 
     # Shell and command execution
-    BashToolProvider,           # Linux container bash execution
+    # BashToolProvider,           # Linux container bash execution
     # ZshToolProvider,            # ZSH shell execution
     ContainerZshToolProvider,    # Container-based ZSH execution
 

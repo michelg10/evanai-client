@@ -42,7 +42,8 @@ class ClaudeCodeAnalyzerProvider(BaseToolSetProvider):
                 name="understand_codebase_with_claude_code",
                 description=(
                     "Analyze a codebase using Claude Code to generate an extensive technical report. "
-                    "This runs Claude Code CLI on the specified directory to understand the project's "
+                    "This tool runs on the HOST MACHINE, not in a container. "
+                    "It executes Claude Code CLI on the specified directory to understand the project's "
                     "technical makeup, architecture, patterns, and implementation details. "
                     "Returns a comprehensive analysis suitable for presentations."
                 ),
@@ -63,9 +64,9 @@ class ClaudeCodeAnalyzerProvider(BaseToolSetProvider):
                     "timeout": Parameter(
                         name="timeout",
                         type=ParameterType.INTEGER,
-                        description="Maximum time in seconds to wait for analysis (default: 300 seconds / 5 minutes)",
+                        description="Maximum time in seconds to wait for analysis (default: 600 seconds / 10 minutes)",
                         required=False,
-                        default=300
+                        default=600
                     )
                 }
             )
@@ -146,6 +147,7 @@ class ClaudeCodeAnalyzerProvider(BaseToolSetProvider):
             # Using --permission-mode plan as requested
             cmd = [
                 'claude',
+                '--model', 'sonnet',
                 '--print', prompt,
                 '--permission-mode', 'plan'
             ]

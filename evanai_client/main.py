@@ -419,7 +419,8 @@ def test_prompt(prompt, conversation_id):
         conversation.get_history(),
         tools,
         tool_callback,
-        enable_builtin_tools=['web_search', 'web_fetch', 'text_editor']  # Enable ALL built-in tools
+        enable_builtin_tools=['web_search', 'web_fetch', 'text_editor'],  # Enable ALL built-in tools
+        working_directory=conversation.working_directory
     )
 
     print(f"\n{Fore.GREEN}Response:{Style.RESET_ALL}")

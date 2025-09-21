@@ -16,7 +16,7 @@ class FileSystemToolProvider(BaseToolSetProvider):
                 id="list_files",
                 name="List Files",
                 display_name="List Files",
-                description="List files and directories in a specified directory",
+                description="List files and directories in the sandboxed working directory. This tool operates within the conversation's isolated workspace, not on the host machine.",
                 parameters={
                     "directory": Parameter(
                         name="directory",
@@ -59,6 +59,12 @@ class FileSystemToolProvider(BaseToolSetProvider):
     def _list_files(self, params: Dict[str, Any], working_directory: str) -> Tuple[Dict[str, Any], Optional[str]]:
         """List files in the specified directory."""
         directory = params.get("directory", ".")
+
+        # Strip /mnt/ prefix if present (agent might use absolute paths)
+        if directory.startswith("/mnt/"):
+            directory = directory[5:]  # Remove "/mnt/" (5 characters)
+        elif directory == "/mnt":
+            directory = "."
 
         # Resolve the directory path relative to working directory
         working_path = Path(working_directory)

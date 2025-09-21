@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 import time
 import sys
+from pathlib import Path
 from colorama import Fore, Style
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from prompts import get_system_prompt
@@ -319,7 +320,8 @@ class ClaudeAgent:
         conversation_history: List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
         tool_callback: Optional[callable] = None,
-        enable_builtin_tools: Optional[List[str]] = None
+        enable_builtin_tools: Optional[List[str]] = None,
+        working_directory: Optional[str] = None
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """Process a prompt with support for multiple tool calls in a single response.
 
@@ -329,11 +331,16 @@ class ClaudeAgent:
             tools: Custom tools list
             tool_callback: Callback for custom tool execution
             enable_builtin_tools: List of built-in tools to enable ('web_fetch', 'web_search', 'text_editor')
+            working_directory: Working directory for the conversation (for text editor)
         """
         messages = conversation_history + [{"role": "user", "content": prompt}]
         new_history = messages.copy()
         final_response = ""
         iteration = 0
+
+        # Update workspace dir for text editor if conversation-specific directory is provided
+        if working_directory and 'text_editor' in (enable_builtin_tools or []):
+            self.builtin_tools.text_editor.workspace_dir = Path(working_directory)
 
         # Configure built-in tools if requested
         extra_headers = None

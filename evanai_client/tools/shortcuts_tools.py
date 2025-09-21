@@ -31,7 +31,7 @@ class ShortcutsToolProvider(BaseToolSetProvider):
                 id="get_calendar_events",
                 name="get_calendar_events",
                 display_name="Get Calendar Events",
-                description="Fetch calendar events from Apple Calendar within a specified date range",
+                description="Fetch calendar events from Apple Calendar on the HOST MACHINE within a specified date range. This tool runs directly on the host Mac, not in a container.",
                 parameters={
                     "calendar": Parameter(
                         name="calendar",
@@ -58,7 +58,7 @@ class ShortcutsToolProvider(BaseToolSetProvider):
                 id="send_email",
                 name="send_email",
                 display_name="Send Email",
-                description="Send an email using Apple Mail",
+                description="Send an email using Apple Mail on the HOST MACHINE. This tool runs directly on the host Mac, not in a container.",
                 parameters={
                     "message_text": Parameter(
                         name="message_text",

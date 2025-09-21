@@ -114,7 +114,8 @@ class BashToolProvider(BaseToolSetProvider):
                 name="Bash Command Execution",
                 display_name="Execute Linux Command",
                 description=(
-                    "Execute bash commands in a stateful Linux environment with full network access. "
+                    "Execute bash commands in a sandboxed Linux container environment. "
+                    "This tool runs in an isolated Docker container, not on the host machine. "
                     "Each conversation has its own persistent container with a writable /mnt directory. "
                     "The shell maintains state across commands (working directory, environment variables, aliases). "
                     "Use 'cd' to change directories - the shell remembers your location. "

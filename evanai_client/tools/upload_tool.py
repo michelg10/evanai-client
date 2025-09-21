@@ -22,12 +22,12 @@ class UploadToolProvider(BaseToolSetProvider):
                 id="submit_file_to_user",
                 name="Submit File to User",
                 display_name="Submit File to User",
-                description="Submit a file from the conversation_data folder to the user for download",
+                description="Submit a file to the user for download. IMPORTANT: Files MUST be in the conversation_data folder - this tool ONLY works with files inside conversation_data/. Files elsewhere in the workspace cannot be uploaded. Save any files you want to submit into conversation_data/ first.",
                 parameters={
                     "path": Parameter(
                         name="path",
                         type=ParameterType.STRING,
-                        description="Path to the file in the conversation_data folder (must start with 'conversation_data/')",
+                        description="Path to the file (MUST start with 'conversation_data/'). Example: 'conversation_data/report.pdf'. Files outside conversation_data cannot be uploaded - save them there first.",
                         required=True
                     ),
                     "description": Parameter(
@@ -91,6 +91,10 @@ class UploadToolProvider(BaseToolSetProvider):
 
         if not description:
             return None, "Error: Description parameter is required"
+
+        # Strip /mnt/ prefix if present (agent might use absolute paths)
+        if file_path.startswith("/mnt/"):
+            file_path = file_path[5:]  # Remove "/mnt/" (5 characters)
 
         # Parse working directory to find conversation_data symlink
         working_path = Path(working_directory)

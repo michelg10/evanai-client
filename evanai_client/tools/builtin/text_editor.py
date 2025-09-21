@@ -363,28 +363,51 @@ class TextEditorTool:
             return self._error(f"Error undoing edit for {path}: {str(e)}")
 
     def _resolve_path(self, path: str) -> Path:
-        """Resolve path - allow access to any path on the system.
+        """Resolve path within the workspace sandbox.
 
-        PERMISSIVE MODE: No workspace restrictions.
-        The agent can access and edit ANY file on the system.
+        SANDBOXED MODE: All paths are resolved within workspace_dir.
+        This prevents the agent from accessing files outside its sandbox.
         """
+        # Strip /mnt/ prefix if present (agent might use absolute container paths)
+        if path.startswith("/mnt/"):
+            path = path[5:]  # Remove "/mnt/" (5 characters)
+        elif path == "/mnt":
+            path = "."
+
         p = Path(path)
 
-        # If absolute path, use as-is
-        if p.is_absolute():
-            resolved = p.resolve()
+        # Always resolve relative to workspace
+        if self.workspace_dir:
+            # Strip leading slash from absolute paths to make them relative
+            if p.is_absolute():
+                # Convert absolute path to relative by removing leading /
+                path_str = str(p).lstrip('/')
+                p = Path(path_str)
+
+            # Resolve within workspace
+            resolved = (self.workspace_dir / p).resolve()
+
+            # Security check: ensure resolved path is within workspace
+            try:
+                resolved.relative_to(self.workspace_dir.resolve())
+            except ValueError:
+                # Path is outside workspace (e.g., due to ../ traversal)
+                raise ValueError(f"Access denied: Path '{path}' is outside the workspace sandbox")
+
+            return resolved
         else:
-            # Relative to workspace if set, otherwise current directory
-            if self.workspace_dir:
-                resolved = (self.workspace_dir / p).resolve()
-            else:
-                resolved = p.resolve()
+            # No workspace set - use current directory as sandbox
+            resolved = p.resolve()
+            cwd = Path.cwd()
 
-        # NO SECURITY CHECK - Allow access to any path
-        # This allows the agent to edit system files, config files, etc.
-        # WARNING: This is extremely permissive!
+            # Security check: ensure resolved path is within current directory
+            try:
+                resolved.relative_to(cwd)
+            except ValueError:
+                # Path is outside current directory
+                raise ValueError(f"Access denied: Path '{path}' is outside the current directory sandbox")
 
-        return resolved
+            return resolved
 
     def _save_to_history(self, path: str, content: str):
         """Save file content to history for undo functionality."""

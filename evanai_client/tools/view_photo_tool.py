@@ -17,7 +17,7 @@ class ViewPhotoToolProvider(BaseToolSetProvider):
                 id="view_photo",
                 name="View Photo",
                 display_name="View Photo",
-                description="Loads an image file and displays it to the AI model for visual analysis. The AI can then see and describe the contents of the image. This photo is not shown to the user. Images should be in standard formats (JPEG, PNG, GIF, WebP).",
+                description="Loads an image file from the sandboxed workspace and displays it to the AI model for visual analysis. The AI can then see and describe the contents of the image. This photo is not shown to the user. Images should be in standard formats (JPEG, PNG, GIF, WebP).",
                 parameters={
                     "photo_path": Parameter(
                         name="photo_path",
@@ -55,6 +55,10 @@ class ViewPhotoToolProvider(BaseToolSetProvider):
         """View a photo by adding it to the model's context window."""
 
         photo_path = parameters["photo_path"]
+
+        # Strip /mnt/ prefix if present (agent might use absolute paths)
+        if photo_path.startswith("/mnt/"):
+            photo_path = photo_path[5:]  # Remove "/mnt/" (5 characters)
 
         # Get working directory from conversation state if available
         working_directory = conversation_state.get('_working_directory')

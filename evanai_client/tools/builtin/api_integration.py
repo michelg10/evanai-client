@@ -8,6 +8,7 @@ It handles:
 - Managing client-side tool interactions (text editor)
 """
 
+import json
 from typing import Dict, Any, List, Optional
 from .text_editor import TextEditorTool
 from .web_fetch import WebFetchTool
@@ -202,7 +203,7 @@ class BuiltinToolsIntegration:
             return {
                 'type': 'tool_result',
                 'tool_use_id': tool_use_id,
-                'content': result
+                'content': json.dumps(result) if isinstance(result, dict) else str(result)
             }
         
         # Server-side tools shouldn't reach here

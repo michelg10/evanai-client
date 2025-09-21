@@ -84,7 +84,8 @@ class ContainerZshToolProvider(BaseToolSetProvider):
                 id="zsh",
                 name="zsh",
                 description=(
-                    "Execute ZSH commands in an isolated Linux container environment. "
+                    "Execute ZSH commands in a sandboxed Linux container environment. "
+                    "This tool runs in an isolated Docker container, not on the host machine. "
                     "Each conversation has its own persistent container with: "
                     "- Ubuntu 24.04 with ZSH shell installed \n"
                     "- PowerPoint creation tools (pptxgenjs, markitdown, python-pptx) \n"
