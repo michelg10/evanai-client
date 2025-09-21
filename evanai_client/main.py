@@ -149,10 +149,53 @@ class AgentClient:
         except KeyboardInterrupt:
             self.stop()
 
+    def cleanup_containers(self):
+        """Clean up all Docker containers created by this client."""
+        try:
+            import docker
+
+            print(f"{Fore.YELLOW}Cleaning up Docker containers...{Style.RESET_ALL}")
+            client = docker.from_env()
+
+            # Find all containers with claude-agent prefix
+            containers = client.containers.list(all=True, filters={"name": "claude-agent-"})
+
+            removed_count = 0
+            for container in containers:
+                try:
+                    container_name = container.name
+                    if container_name.startswith("claude-agent-"):
+                        print(f"  🗑️  Removing container: {container_name}")
+
+                        # Stop if running
+                        if container.status == 'running':
+                            container.stop(timeout=5)
+
+                        # Remove container
+                        container.remove(force=True)
+                        removed_count += 1
+
+                except Exception as e:
+                    print(f"{Fore.RED}  ✗ Failed to remove {container.name}: {e}{Style.RESET_ALL}")
+
+            if removed_count > 0:
+                print(f"{Fore.GREEN}✓ Removed {removed_count} container(s){Style.RESET_ALL}")
+            else:
+                print(f"{Fore.GREEN}✓ No containers to clean up{Style.RESET_ALL}")
+
+        except ImportError:
+            print(f"{Fore.YELLOW}⚠️  Docker SDK not available, skipping container cleanup{Style.RESET_ALL}")
+        except Exception as e:
+            print(f"{Fore.RED}⚠️  Container cleanup failed: {e}{Style.RESET_ALL}")
+
     def stop(self):
         print(f"\n{Fore.YELLOW}Shutting down...{Style.RESET_ALL}")
         self.running = False
         self.websocket_handler.disconnect()
+
+        # Clean up Docker containers
+        self.cleanup_containers()
+
         print(f"{Fore.GREEN}✓ Client stopped{Style.RESET_ALL}")
 
     def status(self):
@@ -200,6 +243,7 @@ def run(reset_state, runtime_dir, api_key, model):
         client.claude_agent.set_model(model)
 
     def signal_handler(sig, frame):
+        print(f"\n{Fore.YELLOW}Received shutdown signal...{Style.RESET_ALL}")
         client.stop()
         sys.exit(0)
 
@@ -270,18 +314,35 @@ def debug(port, runtime_dir):
     """Run the debug web interface for testing tools locally."""
     load_dotenv()
 
+    # Create client for container cleanup functionality
+    client = AgentClient(runtime_dir=runtime_dir)
+
+    def cleanup_and_exit(sig=None, frame=None):
+        print(f"\n{Fore.YELLOW}Debug server shutting down...{Style.RESET_ALL}")
+        client.cleanup_containers()
+        print(f"{Fore.GREEN}✓ Debug server stopped{Style.RESET_ALL}")
+        sys.exit(0)
+
+    # Set up signal handlers for clean shutdown
+    signal.signal(signal.SIGINT, cleanup_and_exit)
+    signal.signal(signal.SIGTERM, cleanup_and_exit)
+
     try:
         from .debug_server import DebugServer
         server = DebugServer(runtime_dir=runtime_dir, port=port)
+        print(f"{Fore.CYAN}Starting debug server on port {port}...{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Press Ctrl+C to stop and clean up containers{Style.RESET_ALL}")
         server.run(debug=False)  # Run without Flask debug mode to avoid restart issues
     except ImportError:
         print(f"{Fore.RED}Error: Debug server dependencies not installed.{Style.RESET_ALL}")
         print("Please install Flask and flask-cors:")
         print("  pip install flask flask-cors")
-        sys.exit(1)
+        cleanup_and_exit()
+    except KeyboardInterrupt:
+        cleanup_and_exit()
     except Exception as e:
         print(f"{Fore.RED}Error starting debug server: {e}{Style.RESET_ALL}")
-        sys.exit(1)
+        cleanup_and_exit()
 
 
 @cli.command()
@@ -321,6 +382,58 @@ def shell(container_name):
             return
 
         shell.shell_into_container(container_name)
+
+
+@cli.command()
+@click.option('--force', is_flag=True, help='Skip confirmation prompt')
+def cleanup_containers(force):
+    """Clean up all Docker containers created by EvanAI Client."""
+    if not force:
+        print(f"{Fore.YELLOW}This will remove all claude-agent Docker containers.{Style.RESET_ALL}")
+        response = click.confirm("Are you sure you want to continue?")
+        if not response:
+            print(f"{Fore.CYAN}Cleanup cancelled.{Style.RESET_ALL}")
+            return
+
+    # Create a minimal client just for cleanup
+    try:
+        import docker
+
+        print(f"{Fore.YELLOW}Cleaning up Docker containers...{Style.RESET_ALL}")
+        client = docker.from_env()
+
+        # Find all containers with claude-agent prefix
+        containers = client.containers.list(all=True, filters={"name": "claude-agent-"})
+
+        removed_count = 0
+        for container in containers:
+            try:
+                container_name = container.name
+                if container_name.startswith("claude-agent-"):
+                    print(f"  🗑️  Removing container: {container_name}")
+
+                    # Stop if running
+                    if container.status == 'running':
+                        container.stop(timeout=5)
+
+                    # Remove container
+                    container.remove(force=True)
+                    removed_count += 1
+
+            except Exception as e:
+                print(f"{Fore.RED}  ✗ Failed to remove {container.name}: {e}{Style.RESET_ALL}")
+
+        if removed_count > 0:
+            print(f"{Fore.GREEN}✓ Removed {removed_count} container(s){Style.RESET_ALL}")
+        else:
+            print(f"{Fore.GREEN}✓ No containers to clean up{Style.RESET_ALL}")
+
+    except ImportError:
+        print(f"{Fore.RED}Error: Docker SDK not available{Style.RESET_ALL}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"{Fore.RED}Container cleanup failed: {e}{Style.RESET_ALL}")
+        sys.exit(1)
 
 
 @cli.command()
