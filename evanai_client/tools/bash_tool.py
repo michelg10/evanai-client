@@ -221,6 +221,13 @@ class BashToolProvider(BaseToolSetProvider):
             conversation_id = f"conv-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
             per_conversation_state['_conversation_id'] = conversation_id
 
+        # Initialize conversation state if needed
+        if 'command_count' not in per_conversation_state:
+            per_conversation_state['command_count'] = 0
+            per_conversation_state['container_created'] = False
+            per_conversation_state['last_command_time'] = None
+            per_conversation_state['working_directory'] = '/mnt'
+
         manager = global_state["manager"]
 
         try:
