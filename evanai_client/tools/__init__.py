@@ -9,6 +9,8 @@ from .file_system_tool import FileSystemToolProvider
 from .upload_tool import UploadToolProvider
 from .asset_tool import AssetToolProvider
 from .view_photo_tool import ViewPhotoToolProvider
+from .write_tool import WriteToolProvider
+from .bash_tool import BashToolProvider
 from .zsh_tool import ZshToolProvider
 
 __all__ = [
@@ -17,6 +19,8 @@ __all__ = [
     'UploadToolProvider',
     'AssetToolProvider',
     'ViewPhotoToolProvider',
+    'WriteToolProvider',
+    'BashToolProvider',
     'ZshToolProvider'
 ]
 
@@ -27,6 +31,8 @@ AVAILABLE_TOOLS = {
     'upload': UploadToolProvider,
     'asset': AssetToolProvider,
     'view_photo': ViewPhotoToolProvider,
+    'write': WriteToolProvider,
+    'bash': BashToolProvider,
     'zsh': ZshToolProvider
 }
 
