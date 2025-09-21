@@ -113,6 +113,14 @@ class LazyAgent:
                 self.work_dir.mkdir(parents=True, exist_ok=True)
 
                 # Container configuration
+                # Mount conversation data and agent memory directories directly
+                conv_data_dir = self.manager.runtime_dir / "conversation-data" / self.agent_id
+                agent_memory_dir = self.manager.runtime_dir / "agent-memory"
+
+                # Ensure directories exist
+                conv_data_dir.mkdir(parents=True, exist_ok=True)
+                agent_memory_dir.mkdir(parents=True, exist_ok=True)
+
                 config = {
                     "image": self.manager.image,
                     "name": self.container_name,
@@ -121,7 +129,9 @@ class LazyAgent:
                         "AGENT_WORK_DIR": "/mnt"
                     },
                     "volumes": {
-                        str(self.work_dir): {"bind": "/mnt", "mode": "rw"}
+                        str(self.work_dir): {"bind": "/mnt", "mode": "rw"},
+                        str(conv_data_dir): {"bind": "/mnt/conversation_data", "mode": "rw"},
+                        str(agent_memory_dir): {"bind": "/mnt/agent-memory", "mode": "rw"}
                     },
                     "network_mode": "host",  # Use host network for full access
                     "mem_limit": self.memory_limit,

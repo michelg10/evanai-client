@@ -57,6 +57,8 @@ class RuntimeManager:
         temp_dir.mkdir(exist_ok=True)
 
         # Create symlink to shared agent-memory
+        # NOTE: These symlinks are for host-side tools only (text_editor, file_system_tool, etc.)
+        # Docker containers mount the actual directories directly, not via symlinks
         agent_memory_link = working_dir / "agent-memory"
         if not agent_memory_link.exists():
             # Calculate relative path from working dir to agent-memory
@@ -67,6 +69,8 @@ class RuntimeManager:
             agent_memory_link.symlink_to(rel_path)
 
         # Create symlink to conversation-specific data
+        # NOTE: These symlinks are for host-side tools only (text_editor, file_system_tool, etc.)
+        # Docker containers mount the actual directories directly, not via symlinks
         conv_data_link = working_dir / "conversation_data"
         if not conv_data_link.exists():
             # Calculate relative path from working dir to conversation data
