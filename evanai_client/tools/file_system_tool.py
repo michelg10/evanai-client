@@ -71,7 +71,7 @@ class FileSystemToolProvider(BaseToolSetProvider):
 
             # Check if this is a valid path
             # Allow access to symlinked directories
-            valid_symlinks = ['conversation_data', 'agent_memory', 'temp']
+            valid_symlinks = ['conversation_data', 'agent-memory', 'temp']
 
             try:
                 # Get the first part of the path

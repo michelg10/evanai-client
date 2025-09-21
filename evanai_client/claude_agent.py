@@ -22,7 +22,7 @@ from .tools.builtin.api_integration import BuiltinToolsIntegration
 
 
 class ClaudeAgent:
-    def __init__(self, api_key: Optional[str] = None, workspace_dir: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, workspace_dir: Optional[str] = None, runtime_dir: Optional[str] = None):
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY not found. Set it as an environment variable or pass it to the constructor.")
@@ -31,6 +31,7 @@ class ClaudeAgent:
         self.model = DEFAULT_CLAUDE_MODEL
         self.original_model = DEFAULT_CLAUDE_MODEL  # Store original model for reset
         self.max_tokens = MAX_TOKENS
+        self.runtime_dir = runtime_dir
         self.system_prompt = self._load_system_prompt()
 
         # Track if we're using backup model
@@ -48,10 +49,28 @@ class ClaudeAgent:
         self.backup_model = os.environ.get("CLAUDE_BACKUP_MODEL", BACKUP_CLAUDE_MODEL)
 
     def _load_system_prompt(self) -> str:
-        """Get the system prompt with current datetime."""
+        """Get the system prompt with current datetime and user facts."""
         try:
             current_datetime = datetime.now().strftime("%B %d, %Y at %I:%M %p %Z")
-            return get_system_prompt(current_datetime)
+            base_prompt = get_system_prompt(current_datetime)
+
+            # Load user facts if runtime_dir is available
+            user_facts_section = ""
+            if self.runtime_dir:
+                from pathlib import Path
+                facts_file = Path(self.runtime_dir) / "agent-memory" / "user_facts.txt"
+                if facts_file.exists():
+                    try:
+                        with open(facts_file, "r", encoding="utf-8") as f:
+                            facts = [line.strip() for line in f if line.strip()]
+                            if facts:
+                                user_facts_section = "\n\nEvan has remembered the following facts about the user:\n"
+                                for fact in facts:
+                                    user_facts_section += f"- {fact}\n"
+                    except Exception:
+                        pass  # Silently ignore if we can't read facts
+
+            return base_prompt + user_facts_section
         except Exception as e:
             print(f"Error loading system prompt: {e}")
             return ""

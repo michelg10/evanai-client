@@ -16,7 +16,7 @@ class RuntimeManager:
     def _ensure_base_directories(self):
         """Ensure all base directories exist."""
         # Create base runtime directories
-        (self.runtime_dir / "agent_memory").mkdir(parents=True, exist_ok=True)
+        (self.runtime_dir / "agent-memory").mkdir(parents=True, exist_ok=True)
         (self.runtime_dir / "conversation-data").mkdir(parents=True, exist_ok=True)
         (self.runtime_dir / "agent-working-directory").mkdir(parents=True, exist_ok=True)
 
@@ -28,7 +28,7 @@ class RuntimeManager:
     @property
     def agent_memory_path(self) -> Path:
         """Get the path to the shared agent memory directory."""
-        return self.runtime_dir / "agent_memory"
+        return self.runtime_dir / "agent-memory"
 
     def get_conversation_data_path(self, conversation_id: str) -> Path:
         """Get the path to a conversation's data directory."""
@@ -56,10 +56,10 @@ class RuntimeManager:
         temp_dir = working_dir / "temp"
         temp_dir.mkdir(exist_ok=True)
 
-        # Create symlink to shared agent_memory
-        agent_memory_link = working_dir / "agent_memory"
+        # Create symlink to shared agent-memory
+        agent_memory_link = working_dir / "agent-memory"
         if not agent_memory_link.exists():
-            # Calculate relative path from working dir to agent_memory
+            # Calculate relative path from working dir to agent-memory
             rel_path = os.path.relpath(
                 self.agent_memory_path,
                 working_dir
@@ -80,7 +80,7 @@ class RuntimeManager:
             "conversation_data": str(conv_data_path),
             "working_directory": str(working_dir),
             "temp_directory": str(temp_dir),
-            "agent_memory_link": str(agent_memory_link),
+            "agent-memory_link": str(agent_memory_link),
             "conversation_data_link": str(conv_data_link)
         }
 
@@ -107,7 +107,7 @@ class RuntimeManager:
         working_dir = self.get_working_directory_path(conversation_id)
         if working_dir.exists():
             # Remove symlinks first (they're just links, safe to unlink)
-            for link in ["agent_memory", "conversation_data"]:
+            for link in ["agent-memory", "conversation_data"]:
                 link_path = working_dir / link
                 if link_path.is_symlink():
                     link_path.unlink()
@@ -145,9 +145,9 @@ class RuntimeManager:
 
             # Check symlinks
             if working_dir.exists():
-                agent_memory_link = working_dir / "agent_memory"
+                agent_memory_link = working_dir / "agent-memory"
                 conv_data_link = working_dir / "conversation_data"
-                info["paths"]["agent_memory_link"] = {
+                info["paths"]["agent-memory_link"] = {
                     "exists": agent_memory_link.exists(),
                     "is_symlink": agent_memory_link.is_symlink(),
                     "target": str(agent_memory_link.resolve()) if agent_memory_link.exists() else None
@@ -170,8 +170,8 @@ class RuntimeManager:
                     shutil.rmtree(dir_path)
                     dir_path.mkdir()
 
-            # Clear agent_memory contents but keep directory
-            agent_mem = self.runtime_dir / "agent_memory"
+            # Clear agent-memory contents but keep directory
+            agent_mem = self.runtime_dir / "agent-memory"
             if agent_mem.exists():
                 for item in agent_mem.iterdir():
                     if item.is_file():
