@@ -1,7 +1,6 @@
 """Upload tools for submitting files to the user."""
 
 import requests
-import json
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
