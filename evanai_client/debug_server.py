@@ -34,7 +34,7 @@ from .conversation_manager import ConversationManager
 from .websocket_handler import WebSocketHandler
 from .runtime_manager import RuntimeManager
 from .constants import DEFAULT_RUNTIME_DIR
-from .feature_flags import DISABLE_BASH_TOOL
+from .feature_flags import ENABLE_BASH_TOOL
 
 
 class MockWebSocketHandler:
@@ -115,7 +115,7 @@ class DebugServer:
         # Initialize Claude agent with workspace for built-in tools
         workspace_dir = os.path.join(self.runtime_manager.runtime_dir, 'workspace')
         os.makedirs(workspace_dir, exist_ok=True)
-        self.claude_agent = ClaudeAgent(api_key, workspace_dir=workspace_dir)
+        self.claude_agent = ClaudeAgent(api_key, workspace_dir=workspace_dir, runtime_dir=self.runtime_manager.runtime_dir)
 
         # Mock websocket handler for debug mode
         self.websocket_handler = MockWebSocketHandler()
@@ -140,7 +140,7 @@ class DebugServer:
         import importlib
         import inspect
 
-        if DISABLE_BASH_TOOL:
+        if not ENABLE_BASH_TOOL:
             print(f"{Fore.YELLOW}Bash tool disabled by feature flag{Style.RESET_ALL}")
 
         tools_dir = Path(__file__).parent / "tools"
@@ -151,8 +151,8 @@ class DebugServer:
         tool_files = [f for f in tool_files if f.name != "__init__.py"]
 
         for tool_file in tool_files:
-            # Skip bash_tool.py if feature flag is set
-            if DISABLE_BASH_TOOL and tool_file.name == "bash_tool.py":
+            # Skip bash_tool.py if feature flag is disabled
+            if not ENABLE_BASH_TOOL and tool_file.name == "bash_tool.py":
                 print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
                 continue
 
@@ -164,7 +164,11 @@ class DebugServer:
                     if (inspect.isclass(obj) and
                         issubclass(obj, BaseToolSetProvider) and
                         obj != BaseToolSetProvider):
-                        provider = obj(websocket_handler=self.websocket_handler)
+                        # Pass runtime_dir to memory tool provider
+                        if name == "MemoryToolProvider":
+                            provider = obj(websocket_handler=self.websocket_handler, runtime_dir=self.runtime_manager.runtime_dir)
+                        else:
+                            provider = obj(websocket_handler=self.websocket_handler)
                         self.tool_manager.register_provider(provider)
                         print(f"{Fore.GREEN}  ✓ Loaded {name} from {tool_file.name}{Style.RESET_ALL}")
             except Exception as e:
