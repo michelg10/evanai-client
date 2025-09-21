@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # Base agent image builder
+  agent-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+      args:
+        - DEBIAN_FRONTEND=noninteractive
+    image: claude-agent:latest
+    container_name: agent-builder
+    command: echo "Build complete"
+    profiles:
+      - build
+
+  # Test agent for verification
+  test-agent:
+    image: claude-agent:latest
+    container_name: claude-agent-test
+    hostname: agent-test
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2'
+        reservations:
+          memory: 1G
+          cpus: '1'
+
+    # Environment
+    environment:
+      - AGENT_ID=test-agent
+      - AGENT_WORK_DIR=/mnt
+
+    # Volumes - mount test working directory
+    volumes:
+      - ./evanai-runtime/agent-working-directory/test-agent:/mnt:rw
+      # Temp directories as tmpfs for performance
+      - type: tmpfs
+        target: /tmp/agent
+        tmpfs:
+          size: 100M
+      - type: tmpfs
+        target: /home/agent/.cache
+        tmpfs:
+          size: 50M
+
+    # Network - using host network for full access
+    network_mode: host
+
+    # Security settings
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+
+    # Process limits
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 2048
+      nproc:
+        soft: 512
+        hard: 1024
+
+    # Interactive
+    stdin_open: true
+    tty: true
+
+    # Working directory
+    working_dir: /mnt
+
+    # Don't auto-start
+    profiles:
+      - test
+
+  # Agent orchestrator service (optional)
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.orchestrator
+    image: claude-orchestrator:latest
+    container_name: claude-orchestrator
+
+    environment:
+      - ORCHESTRATOR_PORT=8080
+      - RUNTIME_DIR=/runtime
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+    volumes:
+      # Mount Docker socket for container management
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Runtime directory for agent data
+      - ./evanai-runtime:/runtime:rw
+
+    # Using host network, so ports are directly accessible
+    network_mode: host
+
+    restart: unless-stopped
+
+    profiles:
+      - orchestrator
+
+# Networks removed - using host network mode for all containers
+
+# Example volume definitions (agents create their own)
+volumes:
+  agent-data:
+    driver: local

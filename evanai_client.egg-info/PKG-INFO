@@ -1,15 +1,4 @@
-Metadata-Version: 2.4
+Metadata-Version: 2.1
 Name: evanai-client
 Version: 0.1.0
 Requires-Python: >=3.8
-Requires-Dist: anthropic>=0.39.0
-Requires-Dist: websocket-client>=1.6.0
-Requires-Dist: asyncio>=3.4.3
-Requires-Dist: aiohttp>=3.9.0
-Requires-Dist: click>=8.1.0
-Requires-Dist: python-dotenv>=1.0.0
-Requires-Dist: pydantic>=2.5.0
-Requires-Dist: colorama>=0.4.6
-Requires-Dist: requests>=2.31.0
-Dynamic: requires-dist
-Dynamic: requires-python

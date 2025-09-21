@@ -1,0 +1,12 @@
+# Requirements for Bash Tool
+# Install with: pip install -r requirements-bash-tool.txt
+
+# Docker SDK for Python (required for container management)
+docker>=6.0.0
+
+# Optional but recommended for API service
+fastapi>=0.100.0
+uvicorn>=0.20.0
+
+# Core requirements (should already be installed)
+# anthropic>=0.3.0  # For Claude API

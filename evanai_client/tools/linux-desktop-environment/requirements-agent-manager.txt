@@ -1,0 +1,2 @@
+# Requirements for agent_manager.py
+docker>=6.0.0

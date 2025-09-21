@@ -1,0 +1,189 @@
+# Claude Agent Execution Environment
+# Read-only filesystem except for /mnt
+# Designed for isolated agent execution with Bash tool
+
+FROM ubuntu:24.04
+
+LABEL maintainer="EvanAI Agent Environment" \
+      version="1.0" \
+      description="Isolated read-only environment for Claude-based agents"
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Environment Variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_ROOT_USER_ACTION=ignore \
+    LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8 \
+    TZ=UTC \
+    PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/agent/.local/bin"
+
+# Create agent user (non-root for security)
+# Using UID 1001 to avoid conflicts with default Ubuntu user
+RUN useradd -m -s /bin/bash -u 1001 agent && \
+    mkdir -p /home/agent && \
+    chown -R agent:agent /home/agent
+
+# Install system packages (minimal for bash functionality)
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+    # Core utilities
+    ca-certificates curl wget \
+    locales sudo \
+    # Basic tools
+    git vim nano \
+    zip unzip tar gzip jq \
+    # Python
+    python3 python3-pip python3-venv \
+    # Network tools
+    net-tools iputils-ping openssh-client \
+    # Process monitoring
+    procps \
+    # File tools
+    file less findutils grep sed gawk \
+    # Additional
+    bc \
+    && locale-gen en_US.UTF-8 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install essential Python packages
+RUN pip3 install --break-system-packages --no-cache-dir \
+    numpy \
+    pandas \
+    requests \
+    beautifulsoup4 \
+    pyyaml \
+    python-dateutil \
+    click \
+    python-dotenv
+
+# Skip NPM packages for now (can be added later if needed)
+
+# Configure ImageMagick for PDF processing
+RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \
+        sed -i 's/<policy domain="coder" rights="none" pattern="PDF" \/>/<policy domain="coder" rights="read|write" pattern="PDF" \/>/g' \
+        /etc/ImageMagick-6/policy.xml; \
+    fi
+
+# Create directory structure
+RUN mkdir -p \
+    /mnt \
+    /tmp/agent \
+    /home/agent/.cache \
+    /home/agent/.config \
+    /home/agent/.local/bin
+
+# Set up sudo for agent user (if needed for specific commands)
+RUN echo "agent ALL=(ALL) NOPASSWD: /bin/mount, /bin/umount" >> /etc/sudoers
+
+# Create entrypoint script
+RUN cat > /entrypoint.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Function to setup read-only root
+setup_readonly() {
+    echo "Setting up read-only environment..."
+
+    # Ensure /mnt is writable (will be mounted from host)
+    if [ ! -w /mnt ]; then
+        echo "Warning: /mnt is not writable"
+    fi
+
+    # Set restrictive permissions on system directories
+    chmod 755 /usr /bin /sbin /lib /lib64 2>/dev/null || true
+
+    # Ensure tmp directories are writable but isolated
+    chmod 1777 /tmp/agent
+    export TMPDIR=/tmp/agent
+    export TEMP=/tmp/agent
+    export TMP=/tmp/agent
+}
+
+# Function to display agent info
+show_agent_info() {
+    echo "==================================="
+    echo "Claude Agent Execution Environment"
+    echo "==================================="
+    echo "Agent ID: ${AGENT_ID:-unknown}"
+    echo "Working Directory: /mnt"
+    echo "Temp Directory: /tmp/agent"
+    echo "User: $(whoami)"
+    echo "==================================="
+    echo ""
+}
+
+# Main execution
+setup_readonly
+show_agent_info
+
+# If AGENT_ID is set, create agent-specific subdirectory
+if [ -n "$AGENT_ID" ]; then
+    mkdir -p /mnt/.agent_${AGENT_ID}
+    export AGENT_WORKSPACE=/mnt/.agent_${AGENT_ID}
+    echo "Agent workspace: $AGENT_WORKSPACE"
+fi
+
+# Execute command or start bash
+if [ $# -eq 0 ]; then
+    exec /bin/bash
+else
+    exec "$@"
+fi
+EOF
+
+RUN chmod +x /entrypoint.sh
+
+# Create agent environment script
+RUN cat > /home/agent/.bashrc << 'EOF'
+# Agent Environment Configuration
+
+# Aliases for common operations
+alias ll='ls -la'
+alias py='python3'
+alias cls='clear'
+
+# Set prompt to show agent context
+if [ -n "$AGENT_ID" ]; then
+    PS1='[\u@agent-$AGENT_ID \W]\$ '
+else
+    PS1='[\u@agent \W]\$ '
+fi
+
+# Working directory shortcuts
+alias work='cd /mnt'
+alias tmp='cd /tmp/agent'
+
+# Safety aliases
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# Python path
+export PYTHONPATH=/mnt:$PYTHONPATH
+
+# Ensure we're in writable directory
+cd /mnt 2>/dev/null || cd /tmp/agent
+
+# Show agent info on login
+if [ -n "$AGENT_ID" ]; then
+    echo "Agent $AGENT_ID environment ready."
+    echo "Working directory: /mnt (writable)"
+    echo "All other paths are read-only."
+fi
+EOF
+
+# Set ownership
+RUN chown -R agent:agent /home/agent /tmp/agent
+
+# Switch to agent user
+USER agent
+WORKDIR /mnt
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default command
+CMD ["/bin/bash"]

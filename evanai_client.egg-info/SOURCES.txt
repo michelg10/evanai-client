@@ -25,5 +25,7 @@ evanai_client/tools/upload_tool.py
 evanai_client/tools/view_photo_tool.py
 evanai_client/tools/weather_tool.py
 evanai_client/tools/linux-desktop-environment/__init__.py
+evanai_client/tools/linux-desktop-environment/agent_manager.py
+evanai_client/tools/linux-desktop-environment/example_integration.py
 prompts/__init__.py
 prompts/system_prompt.py
