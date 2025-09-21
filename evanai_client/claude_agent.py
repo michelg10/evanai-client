@@ -52,7 +52,8 @@ class ClaudeAgent:
             return ""
 
     def _make_api_call_with_retry(self, messages, tools):
-        """Make API call with exponential backoff retry logic. Retries indefinitely."""
+        """Make API call with exponential backoff retry logic. Retries indefinitely.
+        This includes the entire stream processing, not just stream creation."""
         retry_count = 0
         backoff = self.initial_backoff
         current_model = self.model
@@ -80,123 +81,23 @@ class ClaudeAgent:
                 if retry_count > 0:
                     model_status = f"{Fore.CYAN}[BACKUP MODEL]{Style.RESET_ALL}" if self.using_backup_model else f"{Fore.GREEN}[PRIMARY MODEL]{Style.RESET_ALL}"
                     print(f"{model_status} Retry {retry_count} - Waiting {backoff:.2f} seconds...")
-
-                # Make the API call and return the stream
-                stream = self.client.messages.stream(
-                    model=current_model,
-                    messages=messages,
-                    max_tokens=self.max_tokens,
-                    tools=tools if tools else None,
-                    system=self.system_prompt if self.system_prompt else None
-                )
-
-                # If successful and using backup model, show success message
-                if self.using_backup_model and retry_count > 0:
-                    print(f"{Fore.GREEN}✓ Backup model responded successfully{Style.RESET_ALL}")
-
-                return stream
-
-            except Exception as e:
-                error_str = str(e)
-                retry_count += 1
-
-                # Check if it's an overloaded error or other retryable error
-                if 'overloaded_error' in error_str or 'rate_limit' in error_str or 'timeout' in error_str:
-                    if retry_count == 1:
-                        print(f"{Fore.RED}API call failed: {error_str}{Style.RESET_ALL}")
-
-                    # Sleep before retry
                     time.sleep(backoff)
 
-                    # Exponential backoff with max limit
-                    backoff = min(backoff * self.backoff_multiplier, self.max_backoff)
-                else:
-                    # Non-retryable error, raise it
-                    raise e
-
-    def _process_tool_calls(
-        self,
-        content_blocks: List,
-        tool_callback: Optional[callable]
-    ) -> Tuple[List[Dict], str]:
-        """Process tool calls from content blocks.
-
-        Returns:
-            Tuple of (tool_results, text_response)
-        """
-        tool_results = []
-        text_response = ""
-
-        for content_block in content_blocks:
-            if isinstance(content_block, TextBlock):
-                text_response += content_block.text
-            elif isinstance(content_block, ToolUseBlock) and tool_callback:
-                tool_result, error = tool_callback(
-                    content_block.name,
-                    content_block.input
-                )
-
-                tool_result_message = {
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": json.dumps(tool_result) if not error else error,
-                    "is_error": bool(error)
-                }
-                tool_results.append(tool_result_message)
-
-        return tool_results, text_response
-
-    def _build_assistant_message(self, content_blocks: List) -> Dict:
-        """Build assistant message from content blocks."""
-        content = []
-        for content_block in content_blocks:
-            if isinstance(content_block, TextBlock):
-                content.append({
-                    "type": "text",
-                    "text": content_block.text
-                })
-            elif isinstance(content_block, ToolUseBlock):
-                content.append({
-                    "type": "tool_use",
-                    "id": content_block.id,
-                    "name": content_block.name,
-                    "input": content_block.input
-                })
-        return {"role": "assistant", "content": content}
-
-    def process_prompt(
-        self,
-        prompt: str,
-        conversation_history: List[Dict[str, Any]],
-        tools: List[Dict[str, Any]],
-        tool_callback: Optional[callable] = None
-    ) -> Tuple[str, List[Dict[str, Any]]]:
-        """Process a prompt with support for multiple tool calls in a single response."""
-        messages = conversation_history + [{"role": "user", "content": prompt}]
-        new_history = messages.copy()
-        final_response = ""
-        iteration = 0
-
-        try:
-            while True:
-                iteration += 1
-
-                # Log if we're in a long tool-calling chain
-                if iteration > 50 and iteration % 10 == 0:
-                    print(f"Note: Processing iteration {iteration} of tool calls...")
-
-                # Make streaming API call and collect response
-                # We use streaming to comply with Anthropic's requirements
-                # but collect the full response internally before processing
+                # Process the entire stream within the retry block
                 content_blocks = []
                 current_block = None
                 current_text = ""
                 current_tool_input = ""
                 tool_block = None
 
-                # Stream the response and collect content blocks
-                # Use retry logic for API calls
-                with self._make_api_call_with_retry(new_history, tools) as stream:
+                # Make the API call and process stream
+                with self.client.messages.stream(
+                    model=current_model,
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    tools=tools if tools else None,
+                    system=self.system_prompt if self.system_prompt else None
+                ) as stream:
                     # Process streaming events manually to handle both text and tool use
                     for event in stream:
                         if not hasattr(event, 'type'):
@@ -246,6 +147,147 @@ class ClaudeAgent:
                             current_text = ""
                             current_tool_input = ""
                             tool_block = None
+
+                # If successful and using backup model, show success message
+                if self.using_backup_model and retry_count > 0:
+                    print(f"{Fore.GREEN}✓ Backup model responded successfully{Style.RESET_ALL}")
+
+                return content_blocks
+
+            except Exception as e:
+                error_str = str(e)
+                retry_count += 1
+
+                # Check if it's an overloaded error or other retryable error
+                # Also check for the error dict structure from Anthropic
+                is_retryable = (
+                    'overloaded_error' in error_str or
+                    'overloaded' in error_str.lower() or
+                    'rate_limit' in error_str or
+                    'timeout' in error_str or
+                    '529' in error_str  # HTTP status code for overloaded
+                )
+
+                if is_retryable:
+                    if retry_count == 1:
+                        print(f"{Fore.RED}API call failed: {error_str}{Style.RESET_ALL}")
+
+                    # Exponential backoff with max limit
+                    backoff = min(backoff * self.backoff_multiplier, self.max_backoff)
+                else:
+                    # Non-retryable error, raise it
+                    raise e
+
+    def _process_tool_calls(
+        self,
+        content_blocks: List,
+        tool_callback: Optional[callable]
+    ) -> Tuple[List[Dict], str]:
+        """Process tool calls from content blocks.
+
+        Returns:
+            Tuple of (tool_results, text_response)
+        """
+        tool_results = []
+        text_response = ""
+
+        for content_block in content_blocks:
+            if isinstance(content_block, TextBlock):
+                text_response += content_block.text
+            elif isinstance(content_block, ToolUseBlock) and tool_callback:
+                tool_result, error = tool_callback(
+                    content_block.name,
+                    content_block.input
+                )
+
+                # Special handling for view_photo tool - return image content blocks
+                if content_block.name == "view_photo" and tool_result and not error:
+                    # Check if the result contains image data
+                    if isinstance(tool_result, dict) and tool_result.get('type') == 'image':
+                        # Create content array with image and text
+                        content_array = [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": tool_result.get('mime_type', 'image/jpeg'),
+                                    "data": tool_result['data']
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": f"I can now see the image '{tool_result.get('name', 'image')}'. The image has been loaded into my context."
+                            }
+                        ]
+
+                        tool_result_message = {
+                            "type": "tool_result",
+                            "tool_use_id": content_block.id,
+                            "content": content_array,
+                            "is_error": False
+                        }
+                    else:
+                        # Fallback to normal handling if not proper image format
+                        tool_result_message = {
+                            "type": "tool_result",
+                            "tool_use_id": content_block.id,
+                            "content": json.dumps(tool_result) if not error else error,
+                            "is_error": bool(error)
+                        }
+                else:
+                    # Normal handling for other tools
+                    tool_result_message = {
+                        "type": "tool_result",
+                        "tool_use_id": content_block.id,
+                        "content": json.dumps(tool_result) if not error else error,
+                        "is_error": bool(error)
+                    }
+
+                tool_results.append(tool_result_message)
+
+        return tool_results, text_response
+
+    def _build_assistant_message(self, content_blocks: List) -> Dict:
+        """Build assistant message from content blocks."""
+        content = []
+        for content_block in content_blocks:
+            if isinstance(content_block, TextBlock):
+                content.append({
+                    "type": "text",
+                    "text": content_block.text
+                })
+            elif isinstance(content_block, ToolUseBlock):
+                content.append({
+                    "type": "tool_use",
+                    "id": content_block.id,
+                    "name": content_block.name,
+                    "input": content_block.input
+                })
+        return {"role": "assistant", "content": content}
+
+    def process_prompt(
+        self,
+        prompt: str,
+        conversation_history: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        tool_callback: Optional[callable] = None
+    ) -> Tuple[str, List[Dict[str, Any]]]:
+        """Process a prompt with support for multiple tool calls in a single response."""
+        messages = conversation_history + [{"role": "user", "content": prompt}]
+        new_history = messages.copy()
+        final_response = ""
+        iteration = 0
+
+        try:
+            while True:
+                iteration += 1
+
+                # Log if we're in a long tool-calling chain
+                if iteration > 50 and iteration % 10 == 0:
+                    print(f"Note: Processing iteration {iteration} of tool calls...")
+
+                # Make API call with retry logic - this now handles the entire stream processing
+                content_blocks = self._make_api_call_with_retry(new_history, tools)
 
                 # Build and append assistant message
                 assistant_message = self._build_assistant_message(content_blocks)

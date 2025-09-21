@@ -307,7 +307,8 @@ class DebugServer:
                 'model': self.claude_agent.model,
                 'max_tokens': self.claude_agent.max_tokens,
                 'tool_count': len(self.tool_manager.tools),
-                'conversation_count': len(self.conversation_manager.list_conversations())
+                'conversation_count': len(self.conversation_manager.list_conversations()),
+                'active_conversation': self.active_conversation
             })
 
     def run(self, debug: bool = True):

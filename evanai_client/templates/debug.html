@@ -108,6 +108,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
 
         .messages {
@@ -415,7 +416,10 @@
             <!-- Messages Section -->
             <div class="messages-section">
                 <div class="messages-header">
-                    <span>💬 Conversation</span>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <span>💬 Conversation</span>
+                        <span id="conversation-uuid" style="font-size: 11px; opacity: 0.7; color: #00ff88; font-family: monospace;"></span>
+                    </div>
                     <span id="message-count">0 messages</span>
                 </div>
                 <div id="messages" class="messages"></div>
@@ -442,10 +446,19 @@
         let messageCount = 0;
         let isProcessing = false;
 
+        // Update conversation UUID display
+        function updateConversationDisplay() {
+            const uuidElement = document.getElementById('conversation-uuid');
+            if (uuidElement) {
+                uuidElement.textContent = `UUID: ${conversationId}`;
+            }
+        }
+
         // Initialize
         window.onload = () => {
             loadTools();
             loadSystemInfo();
+            updateConversationDisplay();
             document.getElementById('prompt-input').focus();
         };
 
@@ -646,6 +659,7 @@
 
                 // Generate new conversation ID
                 conversationId = 'debug-session-' + Date.now();
+                updateConversationDisplay();
             } catch (error) {
                 console.error('Failed to reset conversation:', error);
             }

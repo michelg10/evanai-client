@@ -16,7 +16,7 @@ class ViewPhotoToolProvider(BaseToolSetProvider):
             Tool(
                 id="view_photo",
                 name="View Photo",
-                description="Adds a photo from the agent sandbox into the model's context window for the model to view. This photo does not get shown to the user. Photos are typically loaded into the agent sandbox first using get_album_photos.",
+                description="Loads an image file and displays it to the AI model for visual analysis. The AI can then see and describe the contents of the image. This photo is not shown to the user. Images should be in standard formats (JPEG, PNG, GIF, WebP).",
                 parameters={
                     "photo_path": Parameter(
                         name="photo_path",
@@ -109,15 +109,16 @@ class ViewPhotoToolProvider(BaseToolSetProvider):
                 'name': path.name
             })
 
-            # Return the image data in a format that can be processed by the system
-            # The actual image display will be handled by the calling system
+            # Return the image data in the proper format for Claude's vision capabilities
+            # This will be converted to an image content block in the message
             result = {
                 'type': 'image',
                 'path': str(path.absolute()),
                 'name': path.name,
                 'mime_type': mime_type,
                 'data': image_base64,
-                'message': f"Photo '{path.name}' from agent sandbox has been added to the model's context window."
+                'size': len(image_data),
+                'message': f"Successfully loaded image '{path.name}' ({len(image_data):,} bytes)"
             }
 
             return result, None

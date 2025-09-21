@@ -9,6 +9,7 @@ The EvanAI client now includes automatic retry with exponential backoff for Clau
 - **Indefinite Retries**: Both primary and backup models retry indefinitely until successful
 - **Clear Visual Feedback**: Prominent CLI indicators show when backup model is active
 - **Configurable Settings**: All retry parameters can be customized
+- **Stream-aware Retry**: Handles errors during stream iteration, not just stream creation
 
 ## Default Configuration
 
@@ -127,3 +128,23 @@ Run the demo script to see the retry behavior:
 ```bash
 python demo_retry_behavior.py
 ```
+
+## Implementation Details
+
+### Stream Processing Fix
+
+The retry mechanism now properly handles errors that occur during stream iteration:
+
+1. **Original Issue**: Errors occurring during stream iteration weren't caught by retry logic
+2. **Solution**: Moved entire stream processing into the retry block
+3. **Result**: All streaming errors are now properly retried
+
+### Error Detection
+
+The system detects retryable errors by checking for:
+- `overloaded_error` or `overloaded` (case-insensitive)
+- `529` (HTTP status code for overloaded)
+- `rate_limit`
+- `timeout`
+
+This ensures comprehensive coverage of all retryable error scenarios.
