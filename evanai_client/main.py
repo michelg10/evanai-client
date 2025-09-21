@@ -11,6 +11,7 @@ import importlib
 import inspect
 
 from .constants import DEFAULT_RUNTIME_DIR, DEFAULT_CLAUDE_MODEL
+from .feature_flags import DISABLE_BASH_TOOL
 from .state_manager import StateManager
 from .tool_system import ToolManager, BaseToolSetProvider
 from .claude_agent import ClaudeAgent
@@ -66,6 +67,9 @@ class AgentClient:
     def load_tools(self):
         print(f"{Fore.YELLOW}Loading tools...{Style.RESET_ALL}")
 
+        if DISABLE_BASH_TOOL:
+            print(f"{Fore.YELLOW}Bash tool disabled by feature flag{Style.RESET_ALL}")
+
         tools_dir = Path(__file__).parent / "tools"
         if not tools_dir.exists():
             print(f"{Fore.YELLOW}No tools directory found, creating...{Style.RESET_ALL}")
@@ -75,6 +79,11 @@ class AgentClient:
         tool_files = [f for f in tool_files if f.name != "__init__.py"]
 
         for tool_file in tool_files:
+            # Skip bash_tool.py if feature flag is set
+            if DISABLE_BASH_TOOL and tool_file.name == "bash_tool.py":
+                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
+                continue
+
             module_name = f"evanai_client.tools.{tool_file.stem}"
             try:
                 module = importlib.import_module(module_name)
