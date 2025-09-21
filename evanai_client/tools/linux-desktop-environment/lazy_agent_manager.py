@@ -119,7 +119,7 @@ class LazyAgent:
                     "nano_cpus": int(self.cpu_limit * 1_000_000_000),
                     "read_only": True,
                     "tmpfs": {
-                        "/tmp/agent": "rw,noexec,nosuid,size=100m",
+                        "/tmp": "rw,noexec,nosuid,size=100m",
                         "/home/agent/.cache": "rw,noexec,nosuid,size=50m"
                     },
                     "security_opt": ["no-new-privileges"],

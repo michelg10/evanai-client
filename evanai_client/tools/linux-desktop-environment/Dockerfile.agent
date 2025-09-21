@@ -95,7 +95,8 @@ setup_readonly() {
     # Set restrictive permissions on system directories
     chmod 755 /usr /bin /sbin /lib /lib64 2>/dev/null || true
 
-    # Ensure tmp directories are writable but isolated
+    # Create and ensure tmp directories are writable but isolated
+    mkdir -p /tmp/agent
     chmod 1777 /tmp/agent
     export TMPDIR=/tmp/agent
     export TEMP=/tmp/agent
