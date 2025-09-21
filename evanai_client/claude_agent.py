@@ -323,9 +323,7 @@ class ClaudeAgent:
         if enable_builtin_tools:
             # Get headers for built-in tools
             extra_headers = self.builtin_tools.get_api_headers(enable_builtin_tools)
-            # Debug output disabled
-            # print(f"[DEBUG] Built-in tools enabled: {enable_builtin_tools}")
-            # print(f"[DEBUG] Extra headers for API: {extra_headers}")
+            print(f"[INFO] Built-in tools enabled: {enable_builtin_tools}")
 
             # Add built-in tool configurations
             builtin_configs = self.builtin_tools.get_tools_config(
