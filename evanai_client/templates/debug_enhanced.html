@@ -1289,7 +1289,52 @@
             if (result.error) {
                 return `❌ Error: ${result.error}`;
             }
-            return `✅ ${result.tool_id} executed successfully\n\nResult:\n${JSON.stringify(result.result, null, 2)}`;
+
+            let output = `✅ ${result.tool_id} executed successfully\n\nResult:\n${JSON.stringify(result.result, null, 2)}`;
+
+            // Check for downloadable files (especially from container tools)
+            if (result.result && result.result.downloadable_files) {
+                const files = result.result.downloadable_files;
+
+                if (files.powerpoint_files && files.powerpoint_files.length > 0) {
+                    output += `\n\n🎯 PowerPoint Files Created:\n`;
+                    files.powerpoint_files.forEach(file => {
+                        output += `📄 ${file.name} (${(file.size / 1024).toFixed(1)}KB)\n`;
+                        output += `   Download: http://localhost:8069${file.download_url}\n`;
+                    });
+                }
+
+                if (files.all_files && files.all_files.length > files.powerpoint_files?.length) {
+                    const otherFiles = files.all_files.filter(f => f.extension !== '.pptx');
+                    if (otherFiles.length > 0) {
+                        output += `\n📁 Other Files:\n`;
+                        otherFiles.slice(0, 5).forEach(file => {
+                            output += `${getFileIcon(file.extension)} ${file.name} (${(file.size / 1024).toFixed(1)}KB)\n`;
+                            output += `   Download: http://localhost:8069${file.download_url}\n`;
+                        });
+                    }
+                }
+
+                if (files.file_list_url) {
+                    output += `\n📋 View all files: http://localhost:8069${files.file_list_url}`;
+                }
+            }
+
+            return output;
+        }
+
+        // Get file icon based on extension
+        function getFileIcon(extension) {
+            const icons = {
+                '.pdf': '📕',
+                '.docx': '📘',
+                '.xlsx': '📗',
+                '.txt': '📄',
+                '.png': '🖼️',
+                '.jpg': '🖼️',
+                '.jpeg': '🖼️'
+            };
+            return icons[extension] || '📎';
         }
 
         // Handle send

@@ -308,7 +308,16 @@ class ContainerZshToolProvider(BaseToolSetProvider):
             result["output"] = stdout
         else:
             result["output"] = stderr if stderr else stdout
-        
+
+        # Check for newly created PowerPoint files and other downloadable files
+        try:
+            download_info = self._check_for_downloadable_files(agent, conversation_id)
+            if download_info:
+                result["downloadable_files"] = download_info
+        except Exception as e:
+            if self.enable_logging:
+                print(f"[ContainerZshTool][{conversation_id}] Error checking for files: {e}")
+
         return result, None
     
     def _get_status(
@@ -371,7 +380,58 @@ class ContainerZshToolProvider(BaseToolSetProvider):
         }
         
         return result, None
-    
+
+    def _check_for_downloadable_files(self, agent, conversation_id: str):
+        """Check for downloadable files created in the container and provide download info."""
+        try:
+            # Get the container working directory from the agent
+            work_dir = agent.work_dir
+
+            if not work_dir.exists():
+                return None
+
+            downloadable_extensions = {'.pptx', '.pdf', '.docx', '.xlsx', '.txt', '.png', '.jpg', '.jpeg'}
+            files_found = []
+
+            # Scan for downloadable files
+            for file_path in work_dir.rglob('*'):
+                if file_path.is_file() and file_path.suffix.lower() in downloadable_extensions:
+                    relative_path = file_path.relative_to(work_dir)
+                    file_info = {
+                        'name': file_path.name,
+                        'path': str(relative_path),
+                        'size': file_path.stat().st_size,
+                        'extension': file_path.suffix.lower(),
+                        'download_url': f'/api/files/download/{conversation_id}/{relative_path}'
+                    }
+                    files_found.append(file_info)
+
+            if files_found:
+                # Sort by most recent first
+                files_found.sort(key=lambda x: work_dir / x['path'], reverse=True)
+
+                # Focus on PowerPoint files
+                pptx_files = [f for f in files_found if f['extension'] == '.pptx']
+
+                download_info = {
+                    'total_files': len(files_found),
+                    'powerpoint_files': pptx_files,
+                    'all_files': files_found[:10],  # Limit to 10 most recent
+                    'file_list_url': f'/api/files/container/{conversation_id}'
+                }
+
+                if pptx_files:
+                    download_info['message'] = f"✅ Created {len(pptx_files)} PowerPoint file(s). Click the download links to access them."
+
+                return download_info
+
+            return None
+
+        except Exception as e:
+            if self.enable_logging:
+                print(f"[ContainerZshTool] Error scanning files: {e}")
+            return None
+
     def get_name(self) -> str:
         """Get the name of this tool provider."""
         return "container_zsh_tools"

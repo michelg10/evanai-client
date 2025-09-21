@@ -480,6 +480,83 @@ class DebugServer:
 
             return Response(generate(), mimetype='text/event-stream')
 
+        @self.app.route('/api/files/container/<conversation_id>')
+        def list_container_files(conversation_id):
+            """List files created in the container for a conversation."""
+            try:
+                # Find container working directory
+                container_work_dir = self.runtime_manager.runtime_dir / "agent-working-directory" / conversation_id
+
+                if not container_work_dir.exists():
+                    return jsonify({'files': [], 'message': 'No container files found for this conversation'})
+
+                files = []
+                for file_path in container_work_dir.rglob('*'):
+                    if file_path.is_file():
+                        relative_path = file_path.relative_to(container_work_dir)
+                        file_info = {
+                            'name': file_path.name,
+                            'path': str(relative_path),
+                            'size': file_path.stat().st_size,
+                            'modified': datetime.fromtimestamp(file_path.stat().st_mtime).isoformat(),
+                            'extension': file_path.suffix.lower(),
+                            'downloadable': file_path.suffix.lower() in ['.pptx', '.pdf', '.docx', '.xlsx', '.txt', '.png', '.jpg', '.jpeg']
+                        }
+                        files.append(file_info)
+
+                # Sort by modification time, newest first
+                files.sort(key=lambda x: x['modified'], reverse=True)
+
+                return jsonify({
+                    'files': files,
+                    'conversation_id': conversation_id,
+                    'container_work_dir': str(container_work_dir)
+                })
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
+        @self.app.route('/api/files/download/<conversation_id>/<path:file_path>')
+        def download_container_file(conversation_id, file_path):
+            """Download a file from the container working directory."""
+            try:
+                from flask import send_file, abort
+                import os
+
+                # Find container working directory
+                container_work_dir = self.runtime_manager.runtime_dir / "agent-working-directory" / conversation_id
+                full_file_path = container_work_dir / file_path
+
+                # Security check - ensure file is within container directory
+                if not str(full_file_path.resolve()).startswith(str(container_work_dir.resolve())):
+                    abort(403)
+
+                if not full_file_path.exists() or not full_file_path.is_file():
+                    abort(404)
+
+                # Determine MIME type based on extension
+                mime_type = 'application/octet-stream'
+                ext = full_file_path.suffix.lower()
+                mime_types = {
+                    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    '.pdf': 'application/pdf',
+                    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    '.txt': 'text/plain',
+                    '.png': 'image/png',
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg'
+                }
+                mime_type = mime_types.get(ext, mime_type)
+
+                return send_file(
+                    full_file_path,
+                    mimetype=mime_type,
+                    as_attachment=True,
+                    download_name=full_file_path.name
+                )
+            except Exception as e:
+                return jsonify({'error': str(e)}), 500
+
     def run(self, debug: bool = True):
         """Run the debug server."""
         print(f"\n{Fore.GREEN}{'='*60}{Style.RESET_ALL}")
