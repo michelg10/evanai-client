@@ -4,10 +4,20 @@ from anthropic import Anthropic
 from anthropic.types import ToolUseBlock, TextBlock
 import json
 from datetime import datetime
+import time
 import sys
+from colorama import Fore, Style
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from prompts import get_system_prompt
-from .constants import MAX_TOKENS, DEFAULT_CLAUDE_MODEL
+from .constants import (
+    MAX_TOKENS,
+    DEFAULT_CLAUDE_MODEL,
+    BACKUP_CLAUDE_MODEL,
+    MAX_BACKOFF_SECONDS,
+    INITIAL_BACKOFF_SECONDS,
+    BACKOFF_MULTIPLIER,
+    FALLBACK_RETRY_COUNT
+)
 
 
 class ClaudeAgent:
@@ -18,8 +28,19 @@ class ClaudeAgent:
 
         self.client = Anthropic(api_key=self.api_key)
         self.model = DEFAULT_CLAUDE_MODEL
+        self.original_model = DEFAULT_CLAUDE_MODEL  # Store original model for reset
         self.max_tokens = MAX_TOKENS
         self.system_prompt = self._load_system_prompt()
+
+        # Track if we're using backup model
+        self.using_backup_model = False
+
+        # Retry configuration (can be overridden by environment variables)
+        self.max_backoff = float(os.environ.get("CLAUDE_MAX_BACKOFF", MAX_BACKOFF_SECONDS))
+        self.initial_backoff = float(os.environ.get("CLAUDE_INITIAL_BACKOFF", INITIAL_BACKOFF_SECONDS))
+        self.backoff_multiplier = float(os.environ.get("CLAUDE_BACKOFF_MULTIPLIER", BACKOFF_MULTIPLIER))
+        self.fallback_retry_count = int(os.environ.get("CLAUDE_FALLBACK_RETRY_COUNT", FALLBACK_RETRY_COUNT))
+        self.backup_model = os.environ.get("CLAUDE_BACKUP_MODEL", BACKUP_CLAUDE_MODEL)
 
     def _load_system_prompt(self) -> str:
         """Get the system prompt with current datetime."""
@@ -29,6 +50,69 @@ class ClaudeAgent:
         except Exception as e:
             print(f"Error loading system prompt: {e}")
             return ""
+
+    def _make_api_call_with_retry(self, messages, tools):
+        """Make API call with exponential backoff retry logic. Retries indefinitely."""
+        retry_count = 0
+        backoff = self.initial_backoff
+        current_model = self.model
+        switched_to_backup = False
+
+        while True:  # No limit to retries - will retry indefinitely
+            try:
+                # Check if we need to switch to backup model (only once)
+                if retry_count == self.fallback_retry_count and not switched_to_backup:
+                    # Display prominent warning about switching to backup model
+                    print(f"\n{Fore.YELLOW}{'='*70}{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}⚠️  SWITCHING TO BACKUP MODEL{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}   Primary model failed {self.fallback_retry_count} times{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}   Now using: {self.backup_model}{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}   Will continue retrying indefinitely with backup model{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}{'='*70}{Style.RESET_ALL}\n")
+
+                    current_model = self.backup_model
+                    self.using_backup_model = True
+                    switched_to_backup = True
+                    # Reset backoff when switching models
+                    backoff = self.initial_backoff
+
+                # Show which model is being used on each retry (after initial failure)
+                if retry_count > 0:
+                    model_status = f"{Fore.CYAN}[BACKUP MODEL]{Style.RESET_ALL}" if self.using_backup_model else f"{Fore.GREEN}[PRIMARY MODEL]{Style.RESET_ALL}"
+                    print(f"{model_status} Retry {retry_count} - Waiting {backoff:.2f} seconds...")
+
+                # Make the API call and return the stream
+                stream = self.client.messages.stream(
+                    model=current_model,
+                    messages=messages,
+                    max_tokens=self.max_tokens,
+                    tools=tools if tools else None,
+                    system=self.system_prompt if self.system_prompt else None
+                )
+
+                # If successful and using backup model, show success message
+                if self.using_backup_model and retry_count > 0:
+                    print(f"{Fore.GREEN}✓ Backup model responded successfully{Style.RESET_ALL}")
+
+                return stream
+
+            except Exception as e:
+                error_str = str(e)
+                retry_count += 1
+
+                # Check if it's an overloaded error or other retryable error
+                if 'overloaded_error' in error_str or 'rate_limit' in error_str or 'timeout' in error_str:
+                    if retry_count == 1:
+                        print(f"{Fore.RED}API call failed: {error_str}{Style.RESET_ALL}")
+
+                    # Sleep before retry
+                    time.sleep(backoff)
+
+                    # Exponential backoff with max limit
+                    backoff = min(backoff * self.backoff_multiplier, self.max_backoff)
+                else:
+                    # Non-retryable error, raise it
+                    raise e
 
     def _process_tool_calls(
         self,
@@ -111,13 +195,8 @@ class ClaudeAgent:
                 tool_block = None
 
                 # Stream the response and collect content blocks
-                with self.client.messages.stream(
-                    model=self.model,
-                    messages=new_history,
-                    max_tokens=self.max_tokens,
-                    tools=tools if tools else None,
-                    system=self.system_prompt if self.system_prompt else None
-                ) as stream:
+                # Use retry logic for API calls
+                with self._make_api_call_with_retry(new_history, tools) as stream:
                     # Process streaming events manually to handle both text and tool use
                     for event in stream:
                         if not hasattr(event, 'type'):
@@ -203,6 +282,7 @@ class ClaudeAgent:
 
     def set_model(self, model: str):
         self.model = model
+        self.original_model = model  # Update original model as well
 
     def set_max_tokens(self, max_tokens: int):
         self.max_tokens = max_tokens
@@ -211,3 +291,45 @@ class ClaudeAgent:
         """Reload the system prompt from file."""
         self.system_prompt = self._load_system_prompt()
         print("System prompt reloaded successfully.")
+
+    def configure_retry(
+        self,
+        max_backoff: Optional[float] = None,
+        initial_backoff: Optional[float] = None,
+        backoff_multiplier: Optional[float] = None,
+        fallback_retry_count: Optional[int] = None,
+        backup_model: Optional[str] = None
+    ):
+        """Configure retry settings for API calls.
+
+        Args:
+            max_backoff: Maximum backoff duration in seconds
+            initial_backoff: Initial backoff duration in seconds
+            backoff_multiplier: Exponential multiplier for backoff
+            fallback_retry_count: Number of retries before switching to backup model
+            backup_model: Backup model to use after fallback_retry_count retries
+        """
+        if max_backoff is not None:
+            self.max_backoff = max_backoff
+        if initial_backoff is not None:
+            self.initial_backoff = initial_backoff
+        if backoff_multiplier is not None:
+            self.backoff_multiplier = backoff_multiplier
+        if fallback_retry_count is not None:
+            self.fallback_retry_count = fallback_retry_count
+        if backup_model is not None:
+            self.backup_model = backup_model
+
+    def reset_model(self):
+        """Reset to original model (useful after fallback to backup model)."""
+        self.model = self.original_model
+        self.using_backup_model = False
+        print(f"{Fore.GREEN}✓ Model reset to: {self.model}{Style.RESET_ALL}")
+
+    def get_current_model(self) -> str:
+        """Get the currently active model."""
+        return self.backup_model if self.using_backup_model else self.model
+
+    def is_using_backup_model(self) -> bool:
+        """Check if currently using backup model."""
+        return self.using_backup_model

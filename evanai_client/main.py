@@ -116,6 +116,16 @@ class AgentClient:
 
     def status(self):
         print(f"\n{Fore.CYAN}=== EvanAI Client Status ==={Style.RESET_ALL}")
+
+        # Show Claude model status
+        current_model = self.claude_agent.get_current_model()
+        if self.claude_agent.is_using_backup_model():
+            print(f"Claude Model: {Fore.YELLOW}{current_model} [BACKUP MODE]{Style.RESET_ALL}")
+            print(f"  Primary Model: {self.claude_agent.original_model} (failed)")
+            print(f"  {Fore.YELLOW}⚠️  System is using backup model due to primary model failures{Style.RESET_ALL}")
+        else:
+            print(f"Claude Model: {Fore.GREEN}{current_model}{Style.RESET_ALL}")
+
         print(f"WebSocket connected: {self.websocket_handler.connected}")
         print(f"Active conversations: {len(self.conversation_manager.list_conversations())}")
         for conv_id in self.conversation_manager.list_conversations():
