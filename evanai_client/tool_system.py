@@ -5,13 +5,11 @@ from enum import Enum
 import threading
 import time
 import os
+import subprocess
+import sys
 from pathlib import Path
 
-# Try to import tkinter and PIL at module level
-# NOTE: Overlay feature is disabled by default on macOS due to threading limitations
-# macOS requires all GUI operations to happen on the main thread, but our overlay
-# runs in a Timer thread which causes crashes. Enable at your own risk with:
-# export EVANAI_SHOW_OVERLAY=true
+# Check if overlay dependencies are available
 try:
     import tkinter as tk
     from PIL import Image, ImageTk
@@ -217,8 +215,7 @@ class ToolManager:
         self.providers: Dict[str, ToolSetProvider] = {}
         self.provider_states: Dict[str, Dict[str, Any]] = {}
         self.overlay_shown = False
-        self.overlay_root = None
-        self.overlay_thread = None
+        self.overlay_process = None
         self.overlay_lock = threading.Lock()
 
     def register_provider(self, provider: ToolSetProvider):
@@ -289,11 +286,10 @@ class ToolManager:
 
         # Start overlay timer (shows after 3 seconds if tool still running)
         # Skip overlay for certain quick tools or if disabled
-        # NOTE: Disabled on macOS due to tkinter threading limitations
-        show_overlay = os.environ.get('EVANAI_SHOW_OVERLAY', 'false').lower() == 'true'  # Default to false
+        show_overlay = os.environ.get('EVANAI_SHOW_OVERLAY', 'true').lower() == 'true'
         overlay_timer = None
 
-        if show_overlay and tool_id not in ['list_files', 'get_weather']:
+        if show_overlay and OVERLAY_AVAILABLE and tool_id not in ['list_files', 'get_weather']:
             overlay_timer = threading.Timer(3.0, self._show_overlay)
             overlay_timer.start()
 
@@ -340,110 +336,42 @@ class ToolManager:
     def _show_overlay(self):
         """Show fullscreen overlay with EvanAI working message."""
         with self.overlay_lock:
-            if self.overlay_shown:
+            if self.overlay_shown or self.overlay_process:
                 return
 
             if not OVERLAY_AVAILABLE:
-                # Overlay not available - tkinter or PIL not installed
                 return
 
             try:
-
-                # Create the fullscreen window
-                self.overlay_root = tk.Tk()
-                self.overlay_root.title("EvanAI Working")
-
-                # Make it fullscreen and on top
-                self.overlay_root.attributes('-fullscreen', True)
-                self.overlay_root.attributes('-topmost', True)
-                self.overlay_root.configure(bg='#0a0e27')  # Dark blue background
-
-                # Get screen dimensions
-                screen_width = self.overlay_root.winfo_screenwidth()
-                screen_height = self.overlay_root.winfo_screenheight()
-
-                # Try to load icon.png from various locations
-                icon_paths = [
-                    Path('icon.png'),  # Current directory
-                    Path(__file__).parent / 'assets' / 'icon.png',  # Assets folder
-                    Path.home() / 'Documents' / 'dremix' / 'evanai-client' / 'icon.png',  # Specific path
-                ]
-
-                icon_loaded = False
-                for icon_path in icon_paths:
-                    if icon_path.exists():
-                        try:
-                            # Load and resize image
-                            img = Image.open(icon_path)
-                            # Scale to 1/3 of screen height while maintaining aspect ratio
-                            target_height = screen_height // 3
-                            aspect_ratio = img.width / img.height
-                            target_width = int(target_height * aspect_ratio)
-                            img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
-
-                            photo = ImageTk.PhotoImage(img)
-                            label = tk.Label(self.overlay_root, image=photo, bg='#0a0e27')
-                            label.image = photo  # Keep reference
-                            label.pack(expand=True)
-                            icon_loaded = True
-                            break
-                        except Exception:
-                            pass
-
-                # If no icon, show text
-                if not icon_loaded:
-                    label = tk.Label(
-                        self.overlay_root,
-                        text="EvanAI is working...",
-                        font=('SF Pro Display', 72, 'bold'),
-                        fg='white',
-                        bg='#0a0e27'
+                # Launch overlay in a separate process to avoid macOS threading issues
+                overlay_script = Path(__file__).parent / 'overlay_process.py'
+                if overlay_script.exists():
+                    # Run the overlay as a subprocess
+                    self.overlay_process = subprocess.Popen(
+                        [sys.executable, str(overlay_script)],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        start_new_session=True  # Detach from parent process group
                     )
-                    label.pack(expand=True)
-
-                # Add subtitle
-                subtitle = tk.Label(
-                    self.overlay_root,
-                    text="Please wait • Press ESC to dismiss",
-                    font=('SF Pro Display', 24),
-                    fg='#7a8299',
-                    bg='#0a0e27'
-                )
-                subtitle.pack(pady=(0, 100))
-
-                # ESC to close
-                self.overlay_root.bind('<Escape>', lambda e: self._hide_overlay())
-
-                # Also close on click
-                self.overlay_root.bind('<Button-1>', lambda e: self._hide_overlay())
-
-                self.overlay_shown = True
-
-                # Run in separate thread to not block
-                def run_overlay():
-                    try:
-                        self.overlay_root.mainloop()
-                    except:
-                        pass
-
-                overlay_display_thread = threading.Thread(target=run_overlay, daemon=True)
-                overlay_display_thread.start()
-
-            except ImportError:
-                # If tkinter or PIL not available, fail silently
-                pass
+                    self.overlay_shown = True
             except Exception:
-                # Any other error, fail silently
+                # Any error, fail silently
                 pass
 
     def _hide_overlay(self):
         """Hide the fullscreen overlay if it's shown."""
         with self.overlay_lock:
-            if self.overlay_shown and self.overlay_root:
+            if self.overlay_process:
                 try:
-                    self.overlay_root.quit()
-                    self.overlay_root.destroy()
+                    # Terminate the overlay process
+                    self.overlay_process.terminate()
+                    # Give it a moment to close gracefully
+                    try:
+                        self.overlay_process.wait(timeout=0.5)
+                    except subprocess.TimeoutExpired:
+                        # Force kill if it doesn't terminate
+                        self.overlay_process.kill()
                 except:
                     pass
-                self.overlay_root = None
-                self.overlay_shown = False
+                self.overlay_process = None
+            self.overlay_shown = False
