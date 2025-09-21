@@ -1,13 +1,13 @@
-# Claude Agent Execution Environment
+# Claude Agent Execution Environment - Simplified
 # Read-only filesystem except for /mnt
 # Designed for isolated agent execution with Bash tool
-# Matches the reference environment from environment_technical_supplement.md
+# Matches the reference environment where possible
 
 FROM ubuntu:24.04
 
 LABEL maintainer="EvanAI Agent Environment" \
-      version="1.0" \
-      description="Isolated read-only environment for Claude-based agents"
+      version="1.0-simplified" \
+      description="Isolated environment for Claude-based agents with essential tools"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -20,7 +20,6 @@ ENV DEBIAN_FRONTEND=noninteractive \
     TZ=UTC \
     HOME=/home/agent \
     IS_SANDBOX=yes \
-    RUST_BACKTRACE=1 \
     PATH="/home/agent/.npm-global/bin:/home/agent/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
     NODE_PATH=/usr/local/lib/node_modules_global \
     NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \
@@ -33,7 +32,7 @@ RUN useradd -m -s /bin/bash -u 1001 agent && \
     mkdir -p /home/agent && \
     chown -R agent:agent /home/agent
 
-# Install system packages (matching reference environment)
+# Install system packages (essential set)
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y --no-install-recommends \
     # Core utilities
@@ -44,8 +43,8 @@ RUN apt-get update && apt-get upgrade -y && \
     zip unzip tar gzip bzip2 xz-utils jq \
     # Development tools
     gcc g++ make cmake build-essential \
-    # Python and dependencies
-    python3.12 python3.12-dev python3.12-venv \
+    # Python
+    python3 python3-dev python3-venv \
     python3-pip python3-setuptools python3-wheel \
     # Network tools
     net-tools iputils-ping openssh-client netcat-openbsd \
@@ -67,31 +66,21 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install document processing tools and additional system packages
+# Install document processing tools
 RUN apt-get update && apt-get install -y \
     # Document processing
     pandoc \
-    libreoffice \
     imagemagick \
     poppler-utils \
     qpdf \
     tesseract-ocr \
     ghostscript \
-    # Media processing
-    ffmpeg \
-    inkscape \
-    # LaTeX (minimal set for now, full texlive-full is very large)
-    texlive-base \
-    texlive-latex-base \
-    texlive-latex-recommended \
-    texlive-fonts-recommended \
+    # Media processing (skip libreoffice and ffmpeg for now - very large)
     # Additional dependencies
     libxml2-dev libxslt1-dev \
     libpq-dev \
     libcairo2-dev \
     libpango1.0-dev \
-    libgdk-pixbuf2.0-dev \
-    librsvg2-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -100,153 +89,33 @@ RUN mkdir -p /home/agent/.npm-global && \
     npm config set prefix '/home/agent/.npm-global' && \
     echo 'export PATH=/home/agent/.npm-global/bin:$PATH' >> /home/agent/.profile
 
-# Install Python packages from environment reference
-# Using compatible versions for Python 3.12
-RUN pip3 install --break-system-packages --no-cache-dir \
+# Install essential Python packages only
+RUN pip3 install --break-system-packages --no-cache-dir --ignore-installed blinker \
     # Data Science Core
-    numpy \
-    pandas \
-    scipy \
-    scikit-learn \
-    scikit-image \
-    statsmodels \
-    # Visualization
-    matplotlib \
-    seaborn \
-    plotly \
-    bokeh \
-    altair \
+    numpy pandas scipy scikit-learn matplotlib seaborn \
     # Document Processing
-    pypdf \
-    PyPDF2 \
-    pdfplumber \
-    python-pptx \
-    openpyxl \
-    xlsxwriter \
-    python-docx \
-    reportlab \
-    camelot-py \
-    pytesseract \
-    pdf2image \
-    markitdown \
-    pandoc \
+    pypdf PyPDF2 python-pptx openpyxl xlsxwriter python-docx \
+    pytesseract pdf2image \
     # Image Processing
-    Pillow \
-    opencv-python \
-    imageio \
-    scikit-video \
-    imutils \
-    # Web Scraping & APIs
-    requests \
-    urllib3 \
-    beautifulsoup4 \
-    lxml \
-    html5lib \
-    scrapy \
-    selenium \
-    httpx \
-    aiohttp \
+    Pillow opencv-python imageio \
+    # Web & APIs
+    requests beautifulsoup4 lxml html5lib selenium httpx aiohttp \
     # Web Frameworks
-    flask \
-    flask-cors \
-    fastapi \
-    uvicorn \
-    starlette \
-    pydantic \
+    flask fastapi uvicorn \
     # Development Tools
-    ipython \
-    jupyter \
-    notebook \
-    jupyterlab \
-    black \
-    pylint \
-    flake8 \
-    mypy \
-    pytest \
-    pytest-cov \
-    tox \
+    ipython jupyter notebook black pytest \
     # Database
-    sqlalchemy \
-    psycopg2-binary \
+    sqlalchemy psycopg2-binary \
     # Utilities
-    click \
-    rich \
-    typer \
-    tqdm \
-    tabulate \
-    colorama \
-    termcolor \
-    pyyaml \
-    toml \
-    python-dateutil \
-    pytz \
-    pendulum \
-    arrow \
-    humanize \
-    python-dotenv \
-    configparser \
-    argparse \
-    fire \
-    # Cryptography & Security
-    cryptography \
-    pycryptodome \
-    passlib \
-    bcrypt \
-    # Additional Scientific
-    sympy \
-    networkx \
-    pygraphviz \
-    pydot \
-    # NLP & Text Processing
-    textblob \
-    ftfy \
-    chardet \
-    # Additional packages
-    Jinja2 \
-    MarkupSafe \
-    Wand \
-    markdownify \
-    marko \
-    mistune \
-    defusedxml \
-    joblib \
-    packaging \
-    pyparsing
+    click rich tqdm pyyaml python-dateutil pytz python-dotenv \
+    # Additional
+    Jinja2 MarkupSafe packaging
 
-# Install NPM global packages (using latest compatible versions)
+# Install essential NPM packages
 RUN npm install -g \
-    @mermaid-js/mermaid-cli \
-    docx \
-    markdown-pdf \
-    markdown-toc \
-    markdownlint-cli \
-    marked \
-    pdf-lib \
-    pptxgenjs \
-    playwright \
     typescript \
     ts-node \
-    sharp
-
-# Create skills directory structure
-RUN mkdir -p /mnt/skills/public/docx \
-    /mnt/skills/public/pdf \
-    /mnt/skills/public/pptx \
-    /mnt/skills/public/xlsx
-
-# Copy skills directory contents if available
-# NOTE: Temporarily disabled - skills can be mounted at runtime with -v flag
-# COPY --chown=agent:agent ./skills/public/ /mnt/skills/public/
-
-# Configure ImageMagick for PDF processing
-RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \
-        sed -i 's/<policy domain="coder" rights="none" pattern="PDF" \/>/<policy domain="coder" rights="read|write" pattern="PDF" \/>/g' \
-        /etc/ImageMagick-6/policy.xml; \
-        sed -i 's/<policy domain="resource" name="memory" value=".*"\/>/<policy domain="resource" name="memory" value="256MiB"\/>/g' \
-        /etc/ImageMagick-6/policy.xml; \
-        sed -i 's/<policy domain="resource" name="map" value=".*"\/>/<policy domain="resource" name="map" value="512MiB"\/>/g' \
-        /etc/ImageMagick-6/policy.xml; \
-    fi
+    @mermaid-js/mermaid-cli
 
 # Create directory structure
 RUN mkdir -p \
@@ -263,6 +132,16 @@ RUN mkdir -p \
     /mnt/skills/public/xlsx \
     /mnt/user-data/uploads \
     /mnt/user-data/outputs
+
+# Configure ImageMagick for PDF processing
+RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \
+        sed -i 's/<policy domain="coder" rights="none" pattern="PDF" \/>/<policy domain="coder" rights="read|write" pattern="PDF" \/>/g' \
+        /etc/ImageMagick-6/policy.xml; \
+        sed -i 's/<policy domain="resource" name="memory" value=".*"\/>/<policy domain="resource" name="memory" value="256MiB"\/>/g' \
+        /etc/ImageMagick-6/policy.xml || true; \
+        sed -i 's/<policy domain="resource" name="map" value=".*"\/>/<policy domain="resource" name="map" value="512MiB"\/>/g' \
+        /etc/ImageMagick-6/policy.xml || true; \
+    fi
 
 # Set up sudo for agent user (if needed for specific commands)
 RUN echo "agent ALL=(ALL) NOPASSWD: /bin/mount, /bin/umount" >> /etc/sudoers
@@ -301,6 +180,8 @@ show_agent_info() {
     echo "Working Directory: /mnt"
     echo "Temp Directory: /tmp/agent"
     echo "User: $(whoami)"
+    echo "Python: $(python3 --version)"
+    echo "Node: $(node --version 2>/dev/null || echo 'not installed')"
     echo "==================================="
     echo ""
 }
