@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  claude-environment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DEBIAN_FRONTEND=noninteractive
+    image: claude-environment:latest
+    container_name: claude-env
+
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4'
+        reservations:
+          memory: 4G
+          cpus: '2'
+
+    # Environment variables
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+      - IS_SANDBOX=yes
+      - PYTHONUNBUFFERED=1
+      - PIP_ROOT_USER_ACTION=ignore
+      - TZ=UTC
+
+    # Volumes for persistent data
+    volumes:
+      # Skills directory - mount your skills files here
+      - ./skills:/mnt/skills
+
+      # Knowledge base
+      - ./knowledge:/mnt/knowledge
+
+      # User data for uploads/outputs
+      - ./user-data:/mnt/user-data
+
+      # Share current directory for development
+      - ./workspace:/home/claude/workspace
+
+      # Cache directories for faster rebuilds
+      - pip-cache:/root/.cache/pip
+      - npm-cache:/home/claude/.npm
+
+      # Optional: Mount local fonts
+      # - ~/.local/share/fonts:/usr/local/share/fonts:ro
+
+    # Network mode (use host if you need to access local services)
+    # network_mode: host
+
+    # Alternatively, use custom network
+    networks:
+      - claude-net
+
+    # Interactive terminal
+    stdin_open: true
+    tty: true
+
+    # Working directory
+    working_dir: /home/claude/workspace
+
+    # Command to run
+    command: /bin/bash
+
+    # Security options (optional - uncomment if needed)
+    # security_opt:
+    #   - seccomp:unconfined
+    #   - apparmor:unconfined
+
+    # Additional capabilities for certain tools (optional)
+    # cap_add:
+    #   - SYS_ADMIN  # Required for some PDF processing
+
+    # Shared memory size (for some ML workloads)
+    shm_size: '2gb'
+
+    # Restart policy
+    restart: unless-stopped
+
+  # Optional: Jupyter notebook service
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: claude-environment:latest
+    container_name: claude-jupyter
+
+    ports:
+      - "8888:8888"
+
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+      - PYTHONUNBUFFERED=1
+
+    volumes:
+      - ./workspace:/home/claude/workspace
+      - ./notebooks:/home/claude/notebooks
+      - pip-cache:/root/.cache/pip
+
+    networks:
+      - claude-net
+
+    working_dir: /home/claude/notebooks
+
+    command: >
+      jupyter notebook
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --NotebookApp.token=''
+      --NotebookApp.password=''
+
+    profiles:
+      - jupyter
+
+# Networks
+networks:
+  claude-net:
+    driver: bridge
+
+# Volumes
+volumes:
+  pip-cache:
+    driver: local
+  npm-cache:
+    driver: local

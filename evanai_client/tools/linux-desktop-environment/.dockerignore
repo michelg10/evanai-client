@@ -1,0 +1,77 @@
+# Docker build artifacts
+.dockerignore
+docker-compose*.yml
+Dockerfile*
+build.sh
+verify.sh
+README.md
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv
+.env
+*.egg
+*.egg-info
+dist/
+build/
+.pytest_cache/
+.coverage
+.tox/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local data directories (will be mounted as volumes)
+workspace/
+skills/
+knowledge/
+user-data/
+notebooks/
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+*.log
+
+# Documentation
+docs/
+*.md
+!requirements.txt
+
+# Archives
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
