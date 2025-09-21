@@ -34,7 +34,7 @@ from .conversation_manager import ConversationManager
 from .websocket_handler import WebSocketHandler
 from .runtime_manager import RuntimeManager
 from .constants import DEFAULT_RUNTIME_DIR
-from .feature_flags import ENABLE_BASH_TOOL, ENABLE_ZSH_TOOL, ENABLE_HTML_CONVERTER_TOOL, ENABLE_MODEL_TRAINING_TOOL, ENABLE_HTML_RENDERER_TOOL
+from .enabled_tools import ENABLED_TOOLS
 
 
 class MockWebSocketHandler:
@@ -136,68 +136,22 @@ class DebugServer:
 
     def _load_tools(self):
         """Load all available tools."""
-        from pathlib import Path
-        import importlib
-        import inspect
+        print(f"{Fore.YELLOW}Loading tools...{Style.RESET_ALL}")
 
-        # Report disabled tools
-        disabled_tools = []
-        if not ENABLE_BASH_TOOL:
-            disabled_tools.append("bash")
-        if not ENABLE_ZSH_TOOL:
-            disabled_tools.append("zsh")
-        if not ENABLE_HTML_CONVERTER_TOOL:
-            disabled_tools.append("html_converter")
-        if not ENABLE_MODEL_TRAINING_TOOL:
-            disabled_tools.append("model_training")
-        if not ENABLE_HTML_RENDERER_TOOL:
-            disabled_tools.append("html_renderer")
-
-        if disabled_tools:
-            print(f"{Fore.YELLOW}Disabled tools: {', '.join(disabled_tools)}{Style.RESET_ALL}")
-
-        tools_dir = Path(__file__).parent / "tools"
-        if not tools_dir.exists():
-            return
-
-        tool_files = list(tools_dir.glob("*.py"))
-        tool_files = [f for f in tool_files if f.name != "__init__.py"]
-
-        for tool_file in tool_files:
-            # Skip tools based on feature flags
-            if not ENABLE_BASH_TOOL and tool_file.name == "bash_tool.py":
-                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
-                continue
-            if not ENABLE_ZSH_TOOL and tool_file.name == "zsh_tool.py":
-                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
-                continue
-            if not ENABLE_HTML_CONVERTER_TOOL and tool_file.name == "html_converter_tool.py":
-                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
-                continue
-            if not ENABLE_MODEL_TRAINING_TOOL and tool_file.name == "model_training_tool.py":
-                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
-                continue
-            if not ENABLE_HTML_RENDERER_TOOL and tool_file.name == "html_renderer_tool.py":
-                print(f"{Fore.YELLOW}  ⊘ Skipping {tool_file.name} (disabled by feature flag){Style.RESET_ALL}")
-                continue
-
-            module_name = f"evanai_client.tools.{tool_file.stem}"
+        # Load enabled tools
+        for tool_class in ENABLED_TOOLS:
             try:
-                module = importlib.import_module(module_name)
+                # Pass runtime_dir to memory tool provider
+                if tool_class.__name__ == "MemoryToolProvider":
+                    provider = tool_class(websocket_handler=self.websocket_handler, runtime_dir=self.runtime_manager.runtime_dir)
+                else:
+                    provider = tool_class(websocket_handler=self.websocket_handler)
 
-                for name, obj in inspect.getmembers(module):
-                    if (inspect.isclass(obj) and
-                        issubclass(obj, BaseToolSetProvider) and
-                        obj != BaseToolSetProvider):
-                        # Pass runtime_dir to memory tool provider
-                        if name == "MemoryToolProvider":
-                            provider = obj(websocket_handler=self.websocket_handler, runtime_dir=self.runtime_manager.runtime_dir)
-                        else:
-                            provider = obj(websocket_handler=self.websocket_handler)
-                        self.tool_manager.register_provider(provider)
-                        print(f"{Fore.GREEN}  ✓ Loaded {name} from {tool_file.name}{Style.RESET_ALL}")
+                self.tool_manager.register_provider(provider)
+                print(f"{Fore.GREEN}  ✓ Loaded {tool_class.__name__}{Style.RESET_ALL}")
+
             except Exception as e:
-                print(f"{Fore.RED}  ✗ Failed to load {tool_file.name}: {e}{Style.RESET_ALL}")
+                print(f"{Fore.RED}  ✗ Failed to load {tool_class.__name__}: {e}{Style.RESET_ALL}")
 
     def _setup_routes(self):
         """Set up Flask routes."""

@@ -626,7 +626,7 @@ def add_technical_implementation_slide():
 
     content.text = tech_text
 
-{"def add_code_example_slide():" if include_code else "def skip_code_slide():"}
+def add_code_example_slide():
     slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
 
@@ -635,24 +635,26 @@ def add_technical_implementation_slide():
 
     title.text = "Implementation Example"
 
-    {"code_text = '''PowerPoint Generation Code Example:" if include_code else "code_text = '''Code examples skipped per configuration.'''"}
-{"from pptx import Presentation" if include_code else ""}
-{"prs = Presentation()" if include_code else ""}
-{"slide = prs.slides.add_slide(prs.slide_layouts[0])" if include_code else ""}
-{"slide.shapes.title.text = 'Generated Slide'" if include_code else ""}
-{"prs.save('/mnt/presentation.pptx')" if include_code else ""}
+    if {include_code}:
+        code_text = \"\"\"PowerPoint Generation Code Example:
+from pptx import Presentation
+prs = Presentation()
+slide = prs.slides.add_slide(prs.slide_layouts[0])
+slide.shapes.title.text = 'Generated Slide'
+prs.save('/mnt/presentation.pptx')
 
-{"Tool Integration Pattern:" if include_code else ""}
-{"class ToolProvider(BaseToolSetProvider):" if include_code else ""}
-{"    def call_tool(self, tool_id, params, state):" if include_code else ""}
-{"        # Execute tool logic" if include_code else ""}
-{"        return result, error" if include_code else ""}
+Tool Integration Pattern:
+class ToolProvider(BaseToolSetProvider):
+    def call_tool(self, tool_id, params, state):
+        # Execute tool logic
+        return result, error
 
-{"Container Command Execution:" if include_code else ""}
-{"zsh_command = f'zsh -c {{json.dumps(command)}}'" if include_code else ""}
-{"exit_code, stdout, stderr = agent.execute_command(" if include_code else ""}
-{"    zsh_command, timeout)" if include_code else ""}
-{"'''" if include_code else ""}
+Container Command Execution:
+zsh_command = f'zsh -c {{json.dumps(command)}}'
+exit_code, stdout, stderr = agent.execute_command(
+    zsh_command, timeout)\"\"\"
+    else:
+        code_text = \"\"\"Code examples skipped per configuration.\"\"\"
 
     content.text = code_text
 
