@@ -85,7 +85,7 @@ class BashToolProvider(BaseToolSetProvider):
         self.websocket_handler = websocket_handler
         self.runtime_dir = runtime_dir or os.environ.get(
             'EVANAI_RUNTIME_DIR',
-            './evanai-runtime'
+            './evanai_runtime'
         )
         self.idle_timeout = idle_timeout
         self.memory_limit = memory_limit
@@ -461,7 +461,7 @@ if __name__ == "__main__":
 
     # Create tool provider
     bash_tool = BashToolProvider(
-        runtime_dir="./evanai-runtime",
+        runtime_dir="./evanai_runtime",
         idle_timeout=60  # 1 minute for demo
     )
 

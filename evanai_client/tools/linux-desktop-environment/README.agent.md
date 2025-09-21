@@ -5,7 +5,7 @@ A secure, isolated Docker environment for running Claude-based agents with Bash 
 ## Key Features
 
 - **Read-only root filesystem**: System files cannot be modified
-- **Isolated working directory**: Each agent has unique `/mnt` mounted from `evanai-runtime/agent-working-directory/<ID>`
+- **Isolated working directory**: Each agent has unique `/mnt` mounted from `evanai_runtime/agent-working-directory/<ID>`
 - **Resource limits**: Configurable memory and CPU constraints
 - **Security hardening**: Dropped capabilities, no new privileges, ulimits
 - **Agent isolation**: Each agent appears to have its own environment
@@ -14,7 +14,7 @@ A secure, isolated Docker environment for running Claude-based agents with Bash 
 ## Architecture
 
 ```
-evanai-runtime/
+evanai_runtime/
 └── agent-working-directory/
     ├── agent-001/           # Agent 1's writable space (/mnt)
     ├── agent-002/           # Agent 2's writable space (/mnt)
@@ -85,7 +85,7 @@ python3 agent_manager.py remove my-agent --data
 #### Option C: Direct Docker Commands
 ```bash
 # Create working directory
-mkdir -p evanai-runtime/agent-working-directory/my-agent
+mkdir -p evanai_runtime/agent-working-directory/my-agent
 
 # Run agent container with host network
 docker run -it --rm \
@@ -94,7 +94,7 @@ docker run -it --rm \
   --read-only \
   --tmpfs /tmp/agent:rw,noexec,nosuid,size=100m \
   --tmpfs /home/agent/.cache:rw,noexec,nosuid,size=50m \
-  -v $(pwd)/evanai-runtime/agent-working-directory/my-agent:/mnt \
+  -v $(pwd)/evanai_runtime/agent-working-directory/my-agent:/mnt \
   -e AGENT_ID=my-agent \
   --security-opt no-new-privileges \
   --cap-drop ALL \
@@ -112,7 +112,7 @@ The `agent_manager.py` provides programmatic control:
 from agent_manager import AgentManager
 
 # Initialize manager
-manager = AgentManager(runtime_dir="./evanai-runtime")
+manager = AgentManager(runtime_dir="./evanai_runtime")
 
 # Create agent
 info = manager.create_agent(
@@ -243,7 +243,7 @@ docker cp claude-agent-data-proc:/mnt/results.csv ./
 ./launch-agent.sh --id scraper -d
 
 # Deploy scraping script (can access localhost services)
-cat > evanai-runtime/agent-working-directory/scraper/scrape.py << 'EOF'
+cat > evanai_runtime/agent-working-directory/scraper/scrape.py << 'EOF'
 import requests
 from bs4 import BeautifulSoup
 
@@ -301,8 +301,8 @@ docker ps -a | grep claude-agent
 ### Permission Denied in /mnt
 ```bash
 # Ensure directory exists and has correct permissions
-mkdir -p evanai-runtime/agent-working-directory/my-agent
-chmod 755 evanai-runtime/agent-working-directory/my-agent
+mkdir -p evanai_runtime/agent-working-directory/my-agent
+chmod 755 evanai_runtime/agent-working-directory/my-agent
 
 # Check mount in container
 docker exec claude-agent-my-agent mount | grep /mnt
@@ -380,7 +380,7 @@ agent.cleanup()
 3. **Data Management**: Regular cleanup of unused agent directories
    ```bash
    # Remove agents older than 7 days
-   find evanai-runtime/agent-working-directory -maxdepth 1 -type d -mtime +7 -exec rm -rf {} \;
+   find evanai_runtime/agent-working-directory -maxdepth 1 -type d -mtime +7 -exec rm -rf {} \;
    ```
 
 4. **Monitoring**: Track resource usage
@@ -389,13 +389,13 @@ agent.cleanup()
    docker stats claude-agent-*
 
    # Check disk usage
-   du -sh evanai-runtime/agent-working-directory/*
+   du -sh evanai_runtime/agent-working-directory/*
    ```
 
 5. **Security**: Never mount sensitive host directories
    ```bash
    # Good: Agent-specific directory
-   -v ./evanai-runtime/agent-working-directory/agent-001:/mnt
+   -v ./evanai_runtime/agent-working-directory/agent-001:/mnt
 
    # Bad: System directory
    -v /etc:/mnt  # NEVER DO THIS
@@ -411,7 +411,7 @@ docker stop $(docker ps -q --filter name=claude-agent-)
 docker rm $(docker ps -aq --filter name=claude-agent-)
 
 # Clean working directories
-rm -rf evanai-runtime/agent-working-directory/*
+rm -rf evanai_runtime/agent-working-directory/*
 
 # Remove Docker image
 docker rmi claude-agent:latest

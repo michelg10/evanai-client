@@ -24,7 +24,7 @@ class ClaudeAgentEnvironment:
     def __init__(
         self,
         agent_id: Optional[str] = None,
-        runtime_dir: str = "./evanai-runtime",
+        runtime_dir: str = "./evanai_runtime",
         memory_limit: str = "2g",
         cpu_limit: float = 2.0,
         auto_cleanup: bool = True
@@ -386,4 +386,4 @@ if __name__ == "__main__":
             print()
 
     print("All examples completed!")
-    print("\nNote: Check ./evanai-runtime/agent-working-directory/ for agent data")
+    print("\nNote: Check ./evanai_runtime/agent-working-directory/ for agent data")

@@ -37,7 +37,7 @@ services:
 
     # Volumes - mount test working directory
     volumes:
-      - ./evanai-runtime/agent-working-directory/test-agent:/mnt:rw
+      - ./evanai_runtime/agent-working-directory/test-agent:/mnt:rw
       # Temp directories as tmpfs for performance
       - type: tmpfs
         target: /tmp/agent
@@ -100,7 +100,7 @@ services:
       # Mount Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Runtime directory for agent data
-      - ./evanai-runtime:/runtime:rw
+      - ./evanai_runtime:/runtime:rw
 
     # Using host network, so ports are directly accessible
     network_mode: host

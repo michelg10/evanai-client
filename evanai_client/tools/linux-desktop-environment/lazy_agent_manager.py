@@ -308,7 +308,7 @@ class LazyAgentManager:
 
     def __init__(
         self,
-        runtime_dir: str = "./evanai-runtime",
+        runtime_dir: str = "./evanai_runtime",
         image: str = "claude-agent:latest",
         default_idle_timeout: int = 300,  # 5 minutes
         max_agents: int = 100
@@ -504,7 +504,7 @@ class ConversationAgent:
     def __init__(
         self,
         conversation_id: Optional[str] = None,
-        runtime_dir: str = "./evanai-runtime",
+        runtime_dir: str = "./evanai_runtime",
         idle_timeout: int = 300
     ):
         """

@@ -103,7 +103,7 @@ print_message "$GREEN" "✓ Prerequisites met"
 
 # Create runtime directories
 print_message "$YELLOW" "Creating runtime directories..."
-mkdir -p evanai-runtime/agent-working-directory
+mkdir -p evanai_runtime/agent-working-directory
 print_message "$GREEN" "✓ Directories created"
 
 # Build image
@@ -148,11 +148,11 @@ TEST_ID="test-$(date +%s)"
 if docker run --rm --read-only \
     --tmpfs /tmp/agent:rw,noexec,nosuid \
     --tmpfs /home/agent/.cache:rw,noexec,nosuid \
-    -v "./evanai-runtime/agent-working-directory/${TEST_ID}:/mnt:rw" \
+    -v "./evanai_runtime/agent-working-directory/${TEST_ID}:/mnt:rw" \
     "$FULL_IMAGE" \
     bash -c "echo 'test' > /mnt/test.txt && cat /mnt/test.txt" > /dev/null 2>&1; then
     print_message "$GREEN" "✓ Read-only filesystem test passed"
-    rm -rf "./evanai-runtime/agent-working-directory/${TEST_ID}"
+    rm -rf "./evanai_runtime/agent-working-directory/${TEST_ID}"
 else
     print_message "$RED" "✗ Read-only filesystem test failed"
 fi
@@ -179,7 +179,7 @@ echo ""
 echo "3. Direct Docker run:"
 echo "   docker run -it --rm \\"
 echo "     --read-only \\"
-echo "     -v ./evanai-runtime/agent-working-directory/my-agent:/mnt \\"
+echo "     -v ./evanai_runtime/agent-working-directory/my-agent:/mnt \\"
 echo "     $FULL_IMAGE"
 echo ""
 echo "4. Test with docker-compose:"

@@ -24,7 +24,7 @@ from docker.errors import NotFound, APIError
 class AgentManager:
     """Manages Claude agent containers with isolated environments."""
 
-    def __init__(self, runtime_dir: str = "./evanai-runtime", image: str = "claude-agent:latest"):
+    def __init__(self, runtime_dir: str = "./evanai_runtime", image: str = "claude-agent:latest"):
         """
         Initialize the Agent Manager.
 
@@ -391,7 +391,7 @@ def main():
     )
     parser.add_argument(
         "--runtime-dir",
-        default="./evanai-runtime",
+        default="./evanai_runtime",
         help="Base directory for runtime data"
     )
     parser.add_argument(

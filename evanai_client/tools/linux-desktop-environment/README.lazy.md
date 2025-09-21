@@ -441,7 +441,7 @@ import time
 def main():
     # Initialize manager
     manager = LazyAgentManager(
-        runtime_dir="./evanai-runtime",
+        runtime_dir="./evanai_runtime",
         default_idle_timeout=300,
         max_agents=10
     )

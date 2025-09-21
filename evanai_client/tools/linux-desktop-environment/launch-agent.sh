@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 IMAGE_NAME="claude-agent:latest"
-RUNTIME_BASE_DIR="${EVANAI_RUNTIME_DIR:-./evanai-runtime}"
+RUNTIME_BASE_DIR="${EVANAI_RUNTIME_DIR:-./evanai_runtime}"
 WORKING_DIR_BASE="$RUNTIME_BASE_DIR/agent-working-directory"
 CONTAINER_PREFIX="claude-agent"
 # No isolated network - using host network

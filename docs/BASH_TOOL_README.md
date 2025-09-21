@@ -68,7 +68,7 @@ tool_manager = ToolManager()
 
 # Create and register bash tool
 bash_provider = BashToolProvider(
-    runtime_dir="./evanai-runtime",
+    runtime_dir="./evanai_runtime",
     idle_timeout=300,  # 5 minutes
     memory_limit="2g",
     cpu_limit=2.0
@@ -216,7 +216,7 @@ Create `bash_tool_config.json`:
 
 ```json
 {
-  "runtime_dir": "./evanai-runtime",
+  "runtime_dir": "./evanai_runtime",
   "docker_image": "claude-agent:latest",
   "idle_timeout": 300,
   "memory_limit": "2g",
@@ -481,7 +481,7 @@ class BashToolProvider(BaseToolSetProvider):
 
 ### Parameters
 
-- `runtime_dir`: Base directory for agent data (default: `./evanai-runtime`)
+- `runtime_dir`: Base directory for agent data (default: `./evanai_runtime`)
 - `idle_timeout`: Seconds before idle container stops (default: 300)
 - `memory_limit`: Docker memory limit (default: "2g")
 - `cpu_limit`: Docker CPU limit in cores (default: 2.0)
@@ -514,7 +514,7 @@ For issues or questions:
 
 3. Review agent working directories:
    ```bash
-   ls -la ./evanai-runtime/agent-working-directory/
+   ls -la ./evanai_runtime/agent-working-directory/
    ```
 
 ## License

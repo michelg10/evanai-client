@@ -56,7 +56,7 @@ class ConversationManager:
     This simulates how Claude would manage different conversation contexts.
     """
 
-    def __init__(self, runtime_dir: str = "./evanai-runtime"):
+    def __init__(self, runtime_dir: str = "./evanai_runtime"):
         self.manager = LazyAgentManager(
             runtime_dir=runtime_dir,
             default_idle_timeout=300,  # 5 minutes

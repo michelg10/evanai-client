@@ -14,7 +14,7 @@ class BashToolConfig:
     """Configuration manager for the Bash tool."""
 
     DEFAULT_CONFIG = {
-        "runtime_dir": "./evanai-runtime",
+        "runtime_dir": "./evanai_runtime",
         "docker_image": "claude-agent:latest",
         "idle_timeout": 300,  # 5 minutes
         "memory_limit": "2g",
