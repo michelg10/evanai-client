@@ -11,7 +11,7 @@ from .tools.upload_tool import UploadToolProvider
 from .tools.memory_tool import MemoryToolProvider
 
 # Shell and command execution
-from .tools.bash_tool import BashToolProvider
+# from .tools.bash_tool import BashToolProvider
 # from .tools.zsh_tool import ZshToolProvider
 from .tools.container_zsh_tool import ContainerZshToolProvider
 
@@ -20,11 +20,11 @@ from .tools.view_photo_tool import ViewPhotoToolProvider
 
 # Development and analysis tools
 from .tools.claude_code_analyzer import ClaudeCodeAnalyzerProvider
-from .tools.self_analysis_tool import SelfAnalysisToolProvider
+# from .tools.self_analysis_tool import SelfAnalysisToolProvider
 
 # System integration
 from .tools.shortcuts_tools import ShortcutsToolProvider
-from .tools.overlay_tool import OverlayToolProvider
+# from .tools.overlay_tool import OverlayToolProvider
 
 
 ENABLED_TOOLS = [
@@ -43,7 +43,7 @@ ENABLED_TOOLS = [
 
     # Development and analysis tools
     ClaudeCodeAnalyzerProvider,  # Analyze code with Claude
-    # SelfAnalysisToolProvider,    # Self-analysis and debugging
+    # SelfAnalysisToolProvider,    # Self-analysis and debugging (disabled - use natural tool flow)
 
     # System integration
     ShortcutsToolProvider,       # macOS Shortcuts integration
