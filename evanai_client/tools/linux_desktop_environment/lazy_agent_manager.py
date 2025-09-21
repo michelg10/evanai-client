@@ -21,6 +21,12 @@ from enum import Enum
 import docker
 from docker.errors import NotFound, APIError
 
+# Import StatefulShell for maintaining shell state
+try:
+    from .stateful_shell import StatefulShell
+except ImportError:
+    from stateful_shell import StatefulShell
+
 
 class AgentState(Enum):
     """Agent lifecycle states."""
@@ -62,6 +68,9 @@ class LazyAgent:
         self.command_count = 0
         self.creation_time = None
         self.cleanup_timer = None
+
+        # Stateful shell for maintaining shell state across commands
+        self.shell_state = StatefulShell(agent_id, initial_workdir="/mnt")
 
         # Thread safety
         self._lock = threading.RLock()
@@ -182,9 +191,13 @@ class LazyAgent:
                 self.command_count += 1
                 self._reset_idle_timer()
 
-                # Execute command
+                # Build command with state restoration
+                stateful_command = self.shell_state.build_command(command)
+
+                # Execute command through bash
+                bash_command = ["bash", "-c", stateful_command]
                 result = self.container.exec_run(
-                    command,
+                    bash_command,
                     stdout=True,
                     stderr=True,
                     stdin=False,
@@ -195,15 +208,19 @@ class LazyAgent:
                     stream=False,
                     environment={
                         "AGENT_ID": self.agent_id,
-                        "AGENT_WORK_DIR": "/mnt"
+                        "HOME": "/home/agent",
+                        "USER": "agent"
                     }
                 )
 
                 # Decode output
                 output = result.output.decode('utf-8', errors='replace')
 
-                # Return results
-                return result.exit_code, output, ""
+                # Update shell state from output and clean it
+                cleaned_output = self.shell_state.update_state_from_output(output)
+
+                # Return results with cleaned output
+                return result.exit_code, cleaned_output, ""
 
             except Exception as e:
                 return 1, "", str(e)

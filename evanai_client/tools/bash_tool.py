@@ -113,9 +113,10 @@ class BashToolProvider(BaseToolSetProvider):
                 id="bash",
                 name="Bash Command Execution",
                 description=(
-                    "Execute bash commands in a Linux environment with full network access. "
-                    "Each conversation has its own container with a writable /mnt directory. "
-                    "The container is created lazily on first use and persists between commands. "
+                    "Execute bash commands in a stateful Linux environment with full network access. "
+                    "Each conversation has its own persistent container with a writable /mnt directory. "
+                    "The shell maintains state across commands (working directory, environment variables, aliases). "
+                    "Use 'cd' to change directories - the shell remembers your location. "
                     "Network: Host network mode (full access to host network services)."
                 ),
                 parameters={
@@ -131,13 +132,6 @@ class BashToolProvider(BaseToolSetProvider):
                         description="Command timeout in seconds (default: 0 = no timeout)",
                         required=False,
                         default=120
-                    ),
-                    "working_dir": Parameter(
-                        name="working_dir",
-                        type=ParameterType.STRING,
-                        description="Working directory (default: /mnt)",
-                        required=False,
-                        default="/mnt"
                     )
                 }
             ),
@@ -273,14 +267,9 @@ class BashToolProvider(BaseToolSetProvider):
             return None, "Command parameter is required"
 
         timeout = parameters.get("timeout", 120)  # Default 2 minute command timeout
-        working_dir = parameters.get("working_dir", "/mnt")
 
         # Track if this is the first command
         is_first = conversation_state["command_count"] == 0
-
-        # Wrap command to set working directory
-        if working_dir != "/mnt":
-            command = f"cd {working_dir} && {command}"
 
         # Log command if enabled
         if self.enable_logging:

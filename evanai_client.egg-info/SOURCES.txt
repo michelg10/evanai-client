@@ -30,9 +30,7 @@ evanai_client/tools/builtin/text_editor.py
 evanai_client/tools/builtin/web_fetch.py
 evanai_client/tools/builtin/web_search.py
 evanai_client/tools/linux-desktop-environment/__init__.py
-evanai_client/tools/linux-desktop-environment/agent_manager.py
-evanai_client/tools/linux-desktop-environment/conversation_api.py
-evanai_client/tools/linux-desktop-environment/example_integration.py
 evanai_client/tools/linux-desktop-environment/lazy_agent_manager.py
+evanai_client/tools/linux-desktop-environment/stateful_shell.py
 prompts/__init__.py
 prompts/system_prompt.py
