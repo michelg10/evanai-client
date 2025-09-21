@@ -1,0 +1,17 @@
+markdown-pdf
+markdown-toc
+markdownlint
+markdownlint-cli2
+marked
+mmdc
+playwright
+remark
+ts-node
+ts-node-cwd
+ts-node-esm
+ts-node-script
+ts-node-transpile-only
+ts-script
+tsc
+tsserver
+tsx
