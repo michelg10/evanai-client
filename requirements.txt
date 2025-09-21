@@ -1,18 +1,132 @@
+# Core dependencies
 anthropic>=0.39.0
 websocket-client>=1.6.0
 asyncio>=3.4.3
-aiohttp>=3.9.0
-click>=8.1.0
-python-dotenv>=1.0.0
-pydantic>=2.5.0
-colorama>=0.4.6
-requests>=2.31.0
+aiohttp==3.11.11  # Updated to match linux-desktop-environment version
+click==8.2.1  # Updated to match linux-desktop-environment version
+python-dotenv==1.0.1  # Updated to match linux-desktop-environment version
+pydantic==2.10.7  # Updated to match linux-desktop-environment version
+colorama==0.4.6
+requests==2.32.5  # Updated to match linux-desktop-environment version
 certifi>=2023.0.0
-urllib3>=2.0.0
+urllib3==2.3.0  # Updated to match linux-desktop-environment version
 
 # Bash tool dependencies (for Docker container management)
 docker>=7.0.0
 
-# Debug interface dependencies (optional)
-flask>=2.3.0
-flask-cors>=4.0.0
+# Web Frameworks & Debug interface
+flask==3.1.2  # Updated to match linux-desktop-environment version
+flask-cors==5.0.0  # Updated to match linux-desktop-environment version
+fastapi==0.117.1
+uvicorn==0.34.1
+starlette==0.42.0
+
+# Core Data Science Stack
+numpy==2.3.3
+pandas==2.3.2
+scipy==1.14.1
+scikit-learn==1.7.2
+scikit-image==0.25.2
+statsmodels==0.14.3
+
+# Visualization
+matplotlib==3.10.6
+seaborn==0.13.2
+plotly==5.25.0
+bokeh==3.6.2
+altair==5.5.1
+
+# Document Processing
+pypdf==5.9.0
+PyPDF2==3.1.1
+pdfplumber==0.11.4
+python-pptx==1.0.2
+openpyxl==3.1.5
+xlsxwriter==3.3.0
+python-docx==1.1.2
+reportlab==4.4.3
+camelot-py==1.0.9
+pytesseract==0.3.13
+pdf2image==1.17.0
+pypdfium==3.1.1
+markitdown==0.1.7
+pandoc==2.4.1
+
+# Image Processing
+Pillow==11.3.0
+opencv-python==4.10.0.84
+imageio==2.37.0
+scikit-video==1.1.11
+imutils==0.5.4
+
+# Web Scraping & APIs
+beautifulsoup4==4.13.5
+lxml==5.3.0
+html5lib==1.1
+scrapy==2.12.0
+selenium==4.27.1
+httpx==0.27.2
+
+# Development Tools
+ipython==8.31.0
+jupyter==1.1.1
+notebook==7.3.2
+jupyterlab==4.3.4
+black==25.1.0
+pylint==3.3.3
+flake8==7.1.1
+mypy==1.14.2
+pytest==8.3.5
+pytest-cov==6.0.0
+tox==4.24.0
+
+# Database
+sqlalchemy==2.0.37
+psycopg2-binary==2.9.10
+
+# Utilities
+rich==13.10.0
+typer==0.15.1
+tqdm==4.67.1
+tabulate==0.9.0
+termcolor==2.5.0
+pyyaml==6.0.2
+toml==0.10.2
+python-dateutil==2.9.0
+pytz==2025.1
+pendulum==3.0.0
+arrow==1.3.0
+humanize==4.12.0
+configparser==7.1.0
+argparse==1.4.0
+fire==0.8.1
+
+# Cryptography & Security
+cryptography==46.0.0
+pycryptodome==3.22.0
+passlib==1.7.4
+bcrypt==4.2.1
+
+# Additional Scientific
+sympy==1.13.3
+networkx==3.4.2
+pygraphviz==1.14
+pydot==3.0.3
+
+# NLP & Text Processing
+textblob==0.18.0.post0
+ftfy==6.3.2
+chardet==5.2.0
+
+# Additional packages
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+Wand==0.6.13
+unoserver==3.3.2
+markdownify==1.2.0
+marko==2.2.0
+mistune==3.1.4
+defusedxml==0.7.1
+joblib==1.5.2
+packaging==25.0
+pyparsing==3.2.4
