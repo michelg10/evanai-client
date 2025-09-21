@@ -247,6 +247,45 @@ def debug(port, runtime_dir):
 
 
 @cli.command()
+def container():
+    """Interactive container shell for debugging and testing."""
+    from .container_shell import ContainerShell
+    shell = ContainerShell()
+    shell.interactive_mode()
+
+
+@cli.command()
+@click.argument('container_name', required=False)
+def shell(container_name):
+    """Quick access to container shell. Usage: evanai-client shell [container_name]"""
+    from .container_shell import ContainerShell
+    shell = ContainerShell()
+
+    if not container_name:
+        # Show list and let user choose
+        shell.interactive_mode()
+    else:
+        # Direct shell access
+        if not container_name.startswith("claude-agent-"):
+            container_name = f"claude-agent-{container_name}"
+
+        # Check if container exists, create if not
+        try:
+            import docker
+            client = docker.from_env()
+            client.containers.get(container_name)
+        except docker.errors.NotFound:
+            print(f"Container {container_name} not found. Creating...")
+            conversation_id = container_name.replace("claude-agent-", "")
+            shell.create_container(conversation_id)
+        except Exception as e:
+            print(f"Error: {e}")
+            return
+
+        shell.shell_into_container(container_name)
+
+
+@cli.command()
 @click.argument('prompt')
 @click.option('--conversation-id', default='test-conversation', help='Conversation ID')
 def test_prompt(prompt, conversation_id):
